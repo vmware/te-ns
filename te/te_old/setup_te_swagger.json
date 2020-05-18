@@ -1,0 +1,48 @@
+{
+    "openapi": "3.0.0",
+    "info" : {
+        "version" : "v2.0",
+        "title" : "Traffic Engine",
+        "description" : "`SWAGGER FOR BRINGING UP THE TRAFFIC ENGINE CONTROLLER`"
+    },
+    "paths" : {
+        "/api/setup_te" : {
+            "get" : {
+                "tags" : ["SETUP"],
+                "summary" : "Bring up the TE controller container",
+                "description" : "`This api call will perform a setup te and build up the TE Controller!!`",
+                "parameters" : [
+                    {
+                        "name" : "te_controller_ip",
+                        "description" : "TE controller ip",
+                        "in" : "query",
+                        "required" : true,
+                        "type": "string"
+                    },
+                    {
+                        "name" : "user",
+                        "description" : "TE controller user name, default is root",
+                        "in" : "query",
+                        "type": "string",
+                        "default" : "root"
+                    },
+                    {
+                        "name" : "passwd",
+                        "description" : "TE controller password",
+                        "in" : "query",
+			"required" : true,
+                        "type": "string"
+                    }
+		],
+                "produces": ["application/json"],
+		"responses" : {"200" :{"description" : "OK" }, "5XX":{"description" : "Bad Request,Internal Server Error!!!"}}
+            }
+        } 	
+    },
+    "externalDocs" : {
+	"description" : "CONFLUENCE",
+	"url" : "https://avinetworks.atlassian.net/wiki/spaces/EN/pages/23134376/Traffic+Engine+Architecture"
+    }
+
+}
+

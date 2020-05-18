@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: TE_GRAFANA
+    type: postgres
+    url: localhost:5432
+    password: te
+    user: te
+    database: te
+    isDefault: true
+    jsonData:
+        sslmode: disable
+
+

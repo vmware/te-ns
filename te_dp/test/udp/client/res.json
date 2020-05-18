@@ -1,0 +1,34 @@
+{
+    "resource-config" : {
+        "default-download-upload-ratio" : "0:1",
+        "udp-profiles" : {
+            "profile-1" : {
+                "upload" : {
+                    "request" : {
+                        "num-datagram-range" : [10,10],
+                        "datagram-size-range" : [10,10]
+                    },
+                    "response" : {
+                        "num-datagram-range" : [20,20],
+                        "datagram-size-range" : [10,10],
+                        "timeout" : 10000
+                    }
+                }
+            },
+            "profile-2" : {
+                "upload" : {
+                    "request" : {
+                        "num-datagram-range" : [10,10],
+                        "datagram-size-range" : [10,10]
+                    }
+                }
+            }
+        },
+        "vip-selection-rr" : true,
+        "vip-list" : [
+            {"vip" : "10.52.180.34:5003", "udp-profile" : "profile-1"}],
+        "log-level" : "default",
+        "log-path" : "/tmp/ramcache/"
+    }
+}
+

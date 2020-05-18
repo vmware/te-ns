@@ -1,0 +1,9 @@
+{
+    "session-config" : [{
+    	"session-type": "MaxPerf",
+    	"num-sessions": 20,
+    	"connection-range": [10,10],
+    	"requests-range": [10,10],
+        "cycle-type" : "restart"
+    }]
+}

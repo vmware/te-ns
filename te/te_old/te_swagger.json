@@ -1,0 +1,1117 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "version": "v2.0",
+        "title": "Traffic Engine",
+        "description": "Swagger documenntation and UI for Traffic Engine"
+    },
+    "components": {
+        "parameters" : {
+            "type_of_metrics" : {
+                "name": "type",
+                "description": "`TOTAL` to get metrics from init and 'LAST_DIFF' to get from last time queried`",
+                "in": "query",
+                "required": true,
+                "schema" : {
+                    "type": "string",
+                    "enum": ["TOTAL", "LAST_DIFF"]
+                }
+            },
+            "traffic_profile" : {
+                "name": "traffic_profile",
+                "description": "`TCP` or `UDP` metrics",
+                "in": "query",
+                "required": true,
+                "schema" : {
+                    "type": "string",
+                    "enum": ["TCP", "UDP"]
+                }
+            },
+            "traffic_mode" : {
+                "name": "traffic_mode",
+                "description": "`CLIENT` or `SERVER` metrics",
+                "in": "query",
+                "required": true,
+                "schema" : {
+                    "type": "string",
+                    "enum": ["CLIENT", "SERVER"]
+                }
+            }
+        },
+        "examples" : {
+            "rps" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:0",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "http://www.example.com"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [1000, 1000],
+                            "cycle-type": "resume",
+                            "num-sessions": 30,
+                            "requests-range": [1000, 1000],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "cps" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:0",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "http://www.example.com"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [1000, 1000],
+                            "cycle-type": "restart",
+                            "num-sessions": 30,
+                            "requests-range": [1000, 1000],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "tput" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:0",
+                            "get-profiles": {"g1": [{"uri": "/128kb.txt"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "http://1.1.1.1"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [100, 100],
+                            "cycle-type": "resume",
+                            "num-sessions": 10,
+                            "requests-range": [100, 100],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "open_conns" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:0",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "http://www.example.com"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [100, 100],
+                            "cycle-type": "resume",
+                            "num-sessions": 30,
+                            "requests-range": [100, 100],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "get_post" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:1",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "post-profiles": {"p1": [{"uri": "/post.target", "file":"10_B.txt"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "post-profile": "p1",
+                                "vip": "http://1.1.1.1"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [10, 10],
+                            "cycle-type": "resume",
+                            "num-sessions": 2,
+                            "requests-range": [10, 10],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "cookies_headers_qparam" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {	
+                            "default-get-post-ratio": "1:0",
+                            "get-profiles": {
+                                "g1": [
+                                    {"uri": "/index.html"},
+                                    {
+                                        "headers" : {
+                                            "X-AUSERNAME": "zhiqian.liu",
+                                            "Cookie" : {
+                                                "user" : "John", 
+                                                "id" : "asdfas^er34123wsdas@#3q4343432"
+                                            }
+                                        },
+                                        "query-params": { "cm": "true", "network": "u" },
+                                        "uri" : "/"
+                                    }
+                                ]
+                            },
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "http://1.1.1.1"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [10, 10],
+                            "cycle-type": "resume",
+                            "num-sessions": 2,
+                            "requests-range": [10, 10],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "https" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:1",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "https://www.example.com"
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [10, 10],
+                            "cycle-type": "resume",
+                            "num-sessions": 2,
+                            "requests-range": [10, 10],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {},
+                    "max_tolerable_delay" : 120
+                }
+            },
+            "https_mutual_auth" : {
+                "value" : {
+                    "resource_config" : {
+                        "res" : {
+                            "default-get-post-ratio": "1:1",
+                            "get-profiles": {"g1": [{"uri": "/index.html"}]},
+                            "http-version": "1.1",
+                            "vip-list": [{
+                                "get-profile": "g1",
+                                "vip": "https://1.1.1.1",
+                                "auth" : true
+                            }]
+                        }
+                    },
+                    "session_config" : {
+                        "ses" : {
+                            "connection-range": [10, 10],
+                            "cycle-type": "resume",
+                            "num-sessions": 2,
+                            "requests-range": [10, 10],
+                            "session-type": "MaxPerf"
+                        }
+                    },
+                    "instanceProfileConfig" : {
+                        "inst_prof_1" : {
+                            "res-tag" : "res",
+                            "ses-tag" : "ses",
+                            "traffic-mode":"CLIENT",
+                            "traffic-profile" : "TCP"
+                        }
+                    },
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":3}}
+                    },
+                    "client_cert_bundle" : {
+                        "127.0.0.1": {
+                            "https://1.1.1.1": [{
+                                "ca-cert-path": "/root/te-cert-key/ca-chain.cert.pem",
+                                "cert-path": "/root/te-cert-key/client.cert.pem",
+                                "enable-cname-verification": false,
+                                "key-path": "/root/te-cert-key/client.key.pem",
+                                "passphrase": "client_key",
+                                "type": "PEM"
+                            }]
+                        }
+                    },
+                    "max_tolerable_delay" : 120
+                }
+            }
+        },
+        "schemas" : {
+            "traffic_parameters" : {
+                "description" : "Parameters to start / update traffic",
+                "type" : "object",
+                "properties" : {
+                    "resource_config": {
+                        "description" : "`Mapping from user defined key to resource_config_object describing WHAT to send`",
+                		"type" : "object",
+                		"additionalProperties" : {
+                    		"$ref": "#/components/schemas/resource_config_object"
+                		}
+                    },
+                    "session_config": {
+                        "description" : "`Mapping from user defined key to session_config_object describing HOW to send`",
+                		"type" : "object",
+                		"additionalProperties" : {
+                    		"$ref": "#/components/schemas/session_config_object"
+                		}
+                    },
+                    "instanceProfileConfig": {
+                        "description" : "`Mapping from user defined key to a club of resource and session config tags`",
+                        "type" : "object",
+                        "properties" : {
+                            "res-tag" : {
+                                "description" : "Tag of resource config defined at resource_config",
+                                "type" : "string"
+                                },
+                            "ses-tag" : {
+                                "description" : "Tag of session config defined at session_config",
+                                "type" : "string"
+                            },
+                            "traffic-mode" : {
+                                "description" : "Describing if the resource and session config should be used as client / server",
+                                "type" : "string",
+                                "default" : "CLIENT"
+                            },
+                            "traffic-profile" : {
+                                "description" : "Describing if the resource and session config should be used in TCP / UDP",
+                                "type" : "string",
+                                "default" : "TCP"
+                            }
+                        }
+                    },
+                    "te_dp_dict" : {"$ref": "#/components/schemas/te_dp"},
+                    "client_cert_bundle" : {
+                        "description" : "`Mapping from host_ip to vip to array of certificate objects. Each client must have the certificates pre-configured and accessible from /root/. Used to targetting SSL VIPs`",
+                        "type" : "object",
+                        "additionalProperties" : {
+                            "type" : "object",
+                            "additionalProperties" : {
+                                "type" : "array",
+                                "items" : {"$ref" : "#/components/schemas/certificate_object"}
+                            }
+                        }
+                    },
+                    "max_tolerable_delay" : {
+                        "description" : "Maximum time to wait in seconds for the request to complete",
+                        "type" : "integer",
+                        "format" : "int32",
+                        "default" : 120,
+                        "required" : false
+                    }
+                }
+            },
+            "tedp_dict" : {
+                "type" : "object",
+                "properties" : {
+                    "te_dp_dict" : {"$ref": "#/components/schemas/te_dp"}
+                },
+                "example" : {
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"instance_profile":{"inst_prof_1":1}}
+                    }
+                }
+            },
+            "resource_config_object": {
+                "description": "`Description of what the client process will have to do`",
+                "type": "object",
+                "properties": {
+                    "http-version": {
+                        "title": "HTTP version (e.g 1.0, 1.1, 2.0)",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "http-pipeline": {
+                        "title": "If http version 1.1 and 2.0, the pipeline option can be HTTP1_PIPELINE, HTTP2_MULTIPLEX)",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "ssl_groups": {
+                        "title": "group ssl sent during client hello of ssl handshake (e.g prime256v1)",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "ssl-version": {
+                        "title": "Version of ssl. Options are (ssl, tlsv1.0, tlsv1.1, tlsv1.2, tlsv1.3)",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "cipher-suites": {
+                        "title": "Encrypted cypher value to use during ssl handshake (e.g 'NULL-MD5:NULL-SHA:RC4-MD5:RC4-SHA:IDEA-CBC-SHA')",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "ssl-session-reuse": {
+                        "title": "Set to true if ssl session id has to be reused across sessions",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "boolean",
+                        "format": "boolean"
+                    },
+                    "set-cookies-reuse": {
+                        "title": "Set to true if the set-cookies from server has to be reused",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "boolean",
+                        "format": "boolean"
+                    },
+                    "tcp-keepalive-timeout": {
+                        "title": "Interval at which tcp keep alive has to be sent (default is 20)",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "send-tcp-resets": {
+                        "title": "Set to true if client must send RST instead of FIN",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "boolean",
+                        "format": "boolean"
+                    },
+                    "default-get-post-ratio": {
+                        "title": "The ratio at which vip will be targeted with gets and posts",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "get-profiles": {
+                        "title": "Profile of get requests",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/get_profile_object"
+                            }
+                        }
+                    },
+                    "post-profiles": {
+                        "title": "Profile of post requests",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/get_profile_object"
+                            }
+                        }
+                    },
+                    "interface-profiles": {
+                        "title": "Profile of interfaces to use to target VIPs",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/components/schemas/interface_profile_object"
+                            }
+                        }
+                    },
+                    "vip-list": {
+                        "title": "Description of VIPs to target",
+                        "description" : "TCP/UDP CLIENT ONLY",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/vip_object"
+                        }
+                    },
+                    "vip-selection-rr": {
+                        "title": "Set to true if VIPs are to be picked in round robin fashion when a session starts, else the pick is random",
+                        "description" : "TCP/UDP CLIENT ONLY",
+                        "type": "boolean",
+                        "format": "boolean"
+                    },
+                    "udp-profiles": {
+                        "title" : "Profile of UDP requests",
+                        "description" : "UDP CLIENT ONLY",
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/udp_profile_object"
+                        }
+                    },
+                    "default-download-upload-ratio": {
+                        "title": "The ratio at which vip will be targeted with uploads and downloads",
+                        "description" : "UDP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "default-response-timeout": {
+                        "title": "Specify the timeout of a UDP request (default 10s)",
+                        "description" : "UDP CLIENT ONLY",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "port-range" : {
+                        "title" : "Range of port to listen on",
+                        "description" : "UDP SERVER ONLY",
+                        "type": "array",
+                        "items": {"type": "integer", "format" : "int32"}
+                    },
+                    "port-list" : {
+                        "title" : "List of port to listen on",
+                        "description" : "UDP SERVER ONLY",
+                        "type": "array",
+                        "items": {"type": "integer", "format" : "int32"}
+                    }
+                }
+            },
+            "session_config_object": {
+                "description": "`Description of how the client process will have to send traffic`",
+                "type": "object",
+                "properties": {
+                    "num-sessions": {
+                        "description": "Number of session to sustain (Parallelism per process)",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "session-type": {
+                        "description": "Emulate a real world traffic (`Browser`) or bombard (`MaxPerf`)",
+                        "type": "string"
+                    },
+                    "connection-range": {
+                        "description": "Random number of connections to open per session (e.g) [5, 10]",
+                        "type": "array",
+                        "items": {"type": "integer", "format" : "int32"}
+                    },
+                    "requests-range": {
+                        "description": "Random number of requests to send per session (e.g) [100, 200]",
+                        "type": "array",
+                        "items": {"type": "integer", "format" : "int32"}
+                    },
+                    "num-cycles": {
+                        "description" : "How many cycles must the requests in `requests-range` be repeated over and over in the same session. Default to 0 (infinite repeat)",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "cycle-type": {
+                        "description": "Should the connection be kept intact (`resume`) or closed and re-opened (`restart`) between cycles. ",
+                        "type": "string"
+                    },
+                    "cycle-delay": {
+                        "description": "A random time delay to be introduced between each cycle in milli seconds. (e.g) [250, 500]. Default to [0,0] meaning no delay",
+                        "type": "array",
+                        "items": {"type": "integer", "format" : "int32"}
+                    },
+                    "session_ramp_step": {
+                        "description": "In `Browser` mode, sessions can be ramped up in steps of this value until `num-sessions` is reached",
+                        "type": "integer",
+                        "format": "int32"
+                    },
+                    "session-ramp-delay": {
+                        "title": "Delay between each ramp step in `Browser` mode. To be used in tandem with `session_ramp_step`",
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "taget-cycles": {
+                        "type": "integer",
+                        "format": "int64",
+                        "title": "once reach to target cycle no the process will exist"
+                    }
+                }
+            },
+            "vip_object" : {
+                "description": "Definition of vip_object",
+                "type": "object",
+                "properties": {
+                    "vip": {
+                        "title": "Enter the target vip ip address (e.g http://www.example.com)",
+                        "description" : "TCP/UDP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "get-profile": {
+                        "title": "Specify the get profile name which is defined under get-profiles",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "post-profile": {
+                        "title": "Specify the post profile name which is defined under post-profiles",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "interface-profile": {
+                        "title": "Specify the interface profile name which is defined under interface-profiles",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "get-post-ratio": {                    
+                        "title": "Specify get-post ratio to override the default-get-to-post-ratio defined",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "string"
+                    },
+                    "auth": {
+                        "description": "Set to true if cert bundle defined has to be used",
+                        "type": "boolean",
+                        "format" : "boolean",
+                        "default" : "false"
+                    }
+                }
+            },
+            "get_profile_object": {
+                "description" : "Definition of get-profile object",
+                "type": "object",
+                "properties": {
+                    "uri": {
+                        "type": "string",
+                        "description": "URI to get from (Required) (e.g '10KB.txt')"
+                    },
+                    "rate": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Rate at which the get request must be capped at. (Defaults to inf) (in Bytes per Second)"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Expected content length (Optional) (in Bytes)"
+                    },
+                    "max-redirects": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Max no of redirect can be tolerated (Optional) (e.g 5)"
+                    },
+                    "query-params": {
+                        "type": "object",
+                        "additionalProperties" : true,
+                        "description": "Query parameters to be sent along with the get request"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "additionalProperties" : true,
+                        "description": "Headers to be sent along with the get request"
+                    }
+                }
+            },
+            "post_profile_object": {
+                "description" : "Definition of post-profile object",
+                "type": "object",
+                "properties": {
+                    "uri": {
+                        "type": "string",
+                        "description": "URI to post to (Required) (e.g '/post.target')"
+                    },
+                    "rate": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Rate at which the post request must be capped at. (Defaults to inf) (in Bytes per Second)"
+                    },
+                    "size": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Expected content length (Optional) (in Bytes)"
+                    },
+                    "max-redirects": {
+                        "type": "integer",
+                        "format": "int32",
+                        "description": "Max no of redirect can be tolerated (Optional) (e.g 5)"
+                    },
+                    "query-params": {
+                        "type": "object",
+                        "additionalProperties" : true,
+                        "description": "Query parameters to be sent along with the post request"
+                    },
+                    "headers": {
+                        "type": "object",
+                        "additionalProperties" : true,
+                        "description": "Headers to be sent along with the post request"
+                    },
+                    "file" : {
+                        "type" : "string",
+                        "description" : "File to send to. If needs to be auto-generated must be of the format <number>_<B/K/M/G>.txt. (e.g) 10_K.txt"
+                    },
+                    "data" : {
+                        "type" : "string",
+                        "description" : "Data to be sent to the post target specified in uri"
+                    }
+                }
+            },
+            "udp_profile_object": {
+                "description" : "Definition of udp-profile object",
+                "type": "object",
+                "properties": {
+                    "upload": {
+                        "type": "object",
+                        "$ref": "#/components/schemas/datagram_object"
+                    },
+                    "download" : {
+                        "type": "object",
+                        "$ref": "#/components/schemas/datagram_object"
+                    }
+                }
+            },
+            "interface_profile_object": {
+                "description": "Definition of interface_profile_object",
+                "type": "object",
+                "properties": {
+                    "if": {
+                        "type": "string",
+                        "title": "Source interface to send out from (Optional - defaults to any interface)"
+                    },
+                    "ns": {
+                        "type": "string",
+                        "title": "Source namespace to send out from (Optional - defaults to root namespace)"
+                    }
+                }
+            },
+            "datagram_object" : {
+                "description" : "Definition of datagram object describing the datagrams to send and receive per request",
+                "type" : "object",
+                "properties" : {
+                    "request" : {
+                        "description" : "Description of datagram going out of client",
+                        "type" : "object",
+                        "properties" : {
+                            "num-datagram-range" : {
+                                "description" : "Number of datagram going out of client random b/w 2 numbers. (e.g) [10, 20]",
+                                "type": "array",
+                                "items": {"type": "integer", "format" : "int32"}
+                            },
+                            "datagram-size-range" : {
+                                "description" : "Size of datagram going out of client in bytes random b/w 2 numbers (e.g) [1000, 5000]",
+                                "type": "array",
+                                "items": {"type": "integer", "format" : "int32"}
+                            }
+                        }
+                    },
+                    "response" : {
+                        "description" : "Description of datagram to request from server",
+                        "type" : "object",
+                        "properties" : {
+                            "num-datagram-range" : {
+                                "description" : "Number of datagram to request from server random b/w 2 numbers. (e.g) [10, 20]",
+                                "type": "array",
+                                "items": {"type": "integer", "format" : "int32"}
+                            },
+                            "datagram-size-range" : {
+                                "description" : "Size of datagram to request from server in bytes random b/w 2 numbers (e.g) [1000, 5000]",
+                                "type": "array",
+                                "items": {"type": "integer", "format" : "int32"}
+                            },
+                            "timeout" : {
+                                "description" : "Maximum time to wait for the request to complete",
+                                "type": "integer",
+                                "format" : "int32",
+                                "default" : 10000
+                            }
+                        }
+                    }
+                }
+            },
+            "certificate_object" : {
+                "description" : "Detail of client certificate",
+                "type" : "object",
+                "properties" : {
+                    "ca-cert-path": {
+                        "description" : " Path to the CA Certifying authority. Passing this would verify the server end ",
+                        "type" : "string"
+                    },
+                    "cert-path": {
+                        "description" : "Path to the client public certificate. Passing this would send the certificate to the server for its validation.",
+                        "type" : "string"
+                    },
+                    "key-path": {
+                        "description" : "Path to the private key of the client. This must be passed along with `cert-path`",
+                        "type" : "string"
+                    },
+                    "passphrase": {
+                        "description" : "Passphrase to open the private key of the client, if any.",
+                        "type" : "string"
+                    },
+                    "type": {
+                        "description" : "Type of the certs and keys. Defaults to `PEM`",
+                        "type" : "string"
+                    },
+                    "enable-cname-verification": {
+                        "description" : " Boolean to verify the cname of the server. Defaults to False.",
+                        "type" : "boolean",
+                        "format" : "boolean"
+                    }
+                }
+            },
+            "tedp_dict_setup" : {
+                "type" : "object",
+                "properties" : {
+                    "te_dp_dict" : {"$ref": "#/components/schemas/te_dp_setup"}
+                },
+                "example" : {
+                    "te_dp_dict" : {
+                        "127.0.0.1" : {"user":"root", "passwd":"avi123"}
+                    }
+                }
+            },
+            "te_dp_setup": {
+                "type": "object",
+                "additionalProperties": {
+                    "type" : "object",
+                    "properties": {
+                        "user": {"type":"string", "default":"root"},
+                        "passwd": {"type":"string", "default":"avi123"}
+                    }
+                }
+            },
+            "te_dp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type" : "object",
+                    "properties": {
+                        "instance_profile" : {
+                            "type": "object",
+                            "additionalProperties": {"type": "number"}
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/api/v1.0/te/setup_tedp": {
+            "post" : {
+                "tags": ["SETUP"],
+                "operationId": "SETUP setup_tedp",
+                "summary": "Setup Traffic Engine Datapath containers",
+                "requestBody": {
+                    "description": "Mapping from Client IP to username / password",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/tedp_dict_setup"}
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/connect": {
+            "post" : {
+                "tags": ["SETUP"],
+                "operationId": "SETUP connect",
+                "summary": "Connect the Traffic Engine Datapath containers with Traffic Engine Controller container",
+                "requestBody": {
+                    "description": "Mapping from Client IP to username / password",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/tedp_dict_setup"}
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/clean": {
+            "post" : {
+                "tags": ["SETUP"],
+                "operationId": "SETUP clear_config",
+                "summary": "Cleans the connection between DP and Controller, and cleans off the metrics",
+                "parameters": [{
+                    "name": "remove_containers",
+                    "description": "`If remove_containers is passed as True, the datapath containers are removed as well`.",
+                    "in": "query",
+                    "required": false,
+                    "type": "boolean",
+                    "format": "boolean",
+                    "default": "false"
+                }],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/grafana": {
+            "post":  {
+                "tags": ["SETUP"],
+                "operationId": "GRAFANA Start",
+                "summary": "Start the Grafana service, helpful in visualizing and monitoring the traffic",
+                "parameters": [ {
+                    "name" : "state",
+                    "description" : "`Pass True to start the service and False to stop it`",
+                    "in": "query",
+                    "required" : true,
+                    "type": "boolean",
+                    "format": "boolean"
+                }],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/start" : {
+            "post" : {
+                "tags": ["START OR UPDATE TRAFFIC"],
+                "operationId": "START OR UPDATE TRAFFIC start",
+                "summary": "Starts the traffic running in the specific datapath containers",
+                "requestBody": {
+                    "description": "Parameters of resource_config, session_config, instance_profile_config, tedp_dict, client_cert_bundle",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/traffic_parameters"},
+                            "examples" : {
+                                "RPS" : {"$ref" : "#/components/examples/rps"},
+                                "CPS" : {"$ref" : "#/components/examples/cps"},
+                                "Throughput" : {"$ref" : "#/components/examples/tput"},
+                                "Open Connections" : {"$ref" : "#/components/examples/open_conns"},
+                                "Get and Post" : {"$ref" : "#/components/examples/get_post"},
+                                "Custom Requests" : {"$ref" : "#/components/examples/cookies_headers_qparam"},
+                                "HTTPS" : {"$ref" : "#/components/examples/https"},
+                                "HTTPS Mutual Authentication" : {"$ref" : "#/components/examples/https_mutual_auth"}
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/update_config" : {
+            "post" : {
+                "tags": ["START OR UPDATE TRAFFIC"],
+                "operationId": "START OR UPDATE TRAFFIC update",
+                "summary": "Updates the traffic running in the specific datapath containers",
+                "requestBody": {
+                    "description": "Parameters of resource_config, session_config, instance_profile_config, tedp_dict, client_cert_bundle",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/traffic_parameters"},
+                            "examples" : {
+                                "RPS" : {"$ref" : "#/components/examples/rps"},
+                                "CPS" : {"$ref" : "#/components/examples/cps"},
+                                "Throughput" : {"$ref" : "#/components/examples/tput"},
+                                "Open Connections" : {"$ref" : "#/components/examples/open_conns"},
+                                "Get and Post" : {"$ref" : "#/components/examples/get_post"},
+                                "Custom Requests" : {"$ref" : "#/components/examples/cookies_headers_qparam"},
+                                "HTTPS" : {"$ref" : "#/components/examples/https"},
+                                "HTTPS Mutual Authentication" : {"$ref" : "#/components/examples/https_mutual_auth"}
+                            }
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/get_vip_metrics" : {
+            "post" : {
+                "tags": ["METRICS"],
+                "operationId": "METRICS vip_metrics",
+                "summary": "Get metrics filtered at a VIP level",
+                "parameters": [
+                    {"$ref" : "#/components/parameters/type_of_metrics"},
+                    {"$ref" : "#/components/parameters/traffic_profile"},
+                    {"$ref" : "#/components/parameters/traffic_mode"}
+                ],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/get_ses_metrics" : {
+            "post" : {
+                "tags": ["METRICS"],
+                "operationId": "METRICS ses_metrics",
+                "summary": "Get metrics to get an overall picture",
+                "parameters": [
+                    {"$ref" : "#/components/parameters/type_of_metrics"},
+                    {"$ref" : "#/components/parameters/traffic_profile"},
+                    {"$ref" : "#/components/parameters/traffic_mode"}
+                ],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/get_error_metrics" : {
+            "post" : {
+                "tags": ["METRICS"],
+                "operationId": "METRICS error_metrics",
+                "summary": "Get metrics to get errors with respect to TCP CLIENTs",
+                "parameters": [
+                    {"$ref" : "#/components/parameters/type_of_metrics"}
+                ],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/get_memory_metrics" : {
+            "post" : {
+                "tags": ["METRICS"],
+                "operationId": "METRICS memory_metrics",
+                "summary": "Get metrics to on memory allocs and dealloc (must be enabled explicitly) (Dev Purpose only)",
+                "parameters": [
+                    {"$ref" : "#/components/parameters/type_of_metrics"}
+                ],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/stop" : {
+            "post" : {
+                "tags": ["STOP"],
+                "operationId": "STOP stop",
+                "summary": "Stops all the traffic across the datapath client",
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/stop/by_profile_tag" : {
+            "post" : {
+                "tags": ["STOP"],
+                "operationId": "TRAFFIC stop with instance_profile tag",
+                "summary": "Stops the traffic running the specific instance profiles",
+                "parameters": [{
+                    "name": "by_instance_profile_tag",
+                    "description": "`Instance profile tags to be stopped (e.g [inst_prof_1, inst_prof_2]).`",
+                    "in": "query",
+                    "required": true,
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "default" : ["inst_prof_1"]
+                }],
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        },
+        "/api/v1.0/te/stop/by_tedp_dict": {
+            "post" : {
+                "tags": ["STOP"],
+                "operationId": "TRAFFIC stop with tedp_dict",
+                "summary": "Stops the traffic running in the specific datapath containers",
+                "requestBody": {
+                    "description": "Mapping from Client IP to instance_profile",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": "#/components/schemas/tedp_dict"}
+                        }
+                    }
+                },
+                "produces": ["application/json"],
+                "responses": {"201": {"description": "OK"}, "400": {"description": "Failed. Bad post data."}}
+            }
+        }
+    }
+}

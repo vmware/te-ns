@@ -1,0 +1,8 @@
+[Unit]
+Description=Bring Up Swagger UI to perform Setup TE
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/usr/bin/python /usr/share/nginx/html/swagger-ui-repo/TE_SWAGGER.py

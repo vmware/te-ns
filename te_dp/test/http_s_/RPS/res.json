@@ -1,0 +1,10 @@
+{
+    "resource-config" : {
+        "get-profiles": {"g1":[{"uri": "128b.txt"}]},
+    	"default-get-post-ratio" : "1:0",
+       	"vip-list": [{"vip":"http://10.52.180.160", "get-profile":"g1"}],
+    	"http-version" : "1.1",
+        "http-pipeline" : "HTTP1_PIPELINE",
+        "log-path" : "/tmp/ramcache"
+    }
+}

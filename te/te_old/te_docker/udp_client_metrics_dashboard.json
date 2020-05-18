@@ -1,0 +1,176 @@
+{
+    "editable": true,
+    "panels": [
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 0
+        },
+        "id": 4,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+          {
+              "format": "time_series",
+              "rawQuery": true,
+              "rawSql": "SELECT\n  ts AS \"time\",\n  sessions,cycles_complete,reqs_sent,reqs_failed,dg_sent,dg_send_fail,resp_rcvd,dg_recd\nFROM udp_client_ses_metrics\nWHERE\n  $__timeFilter(ts) and host_ip IN($HOST_IP)",
+              "refId": "A",
+              "timeColumnType": "timestamp"
+          }
+        ],
+        "title": "UDP SESSION METRICS",
+        "type": "graph",
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+        },
+        "id": 2,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+          {
+              "format": "time_series",
+              "rawQuery": true,
+              "rawSql": "SELECT\n  ts AS \"time\",\n  sessions\nFROM udp_client_vip_metrics\nWHERE\n  $__timeFilter(ts) and vip IN($VIP) and host_ip IN($HOST_IP)",
+              "refId": "A",
+              "timeColumnType": "timestamp"
+          }
+        ],
+        "title": "UDP VIP METRICS",
+        "type": "graph",
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 16
+        },
+        "id": 6,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+          {
+              "format": "time_series",
+              "rawQuery": true,
+              "rawSql": "SELECT\n  ts AS \"time\",\n  reqs_sent,reqs_failed,dg_sent,dg_send_fail,resp_rcvd,dg_recd\nFROM udp_client_url_metrics\nWHERE\n  $__timeFilter(ts) and host_ip IN($HOST_IP) and vip IN($VIP) and method IN($METHOD)",
+              "refId": "A",
+              "timeColumnType": "timestamp"
+          }
+        ],
+        "title": "UDP URL METRICS",
+        "type": "graph",
+        "xaxis": {
+          "mode": "time"
+        }
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 23
+          },
+          "id": 9,
+          "legend": {
+              "current": true,
+              "show": true,
+              "values": true
+          },
+          "targets": [
+            {
+                "format": "time_series",
+                "rawQuery": true,
+                "rawSql": "SELECT\n  ts AS \"time\",\n  mean_latency,var_latency,latency_min,latency_max\nFROM udp_client_url_metrics\nWHERE\n  $__timeFilter(ts)",
+                "refId": "A",
+                "timeColumnType": "timestamp"
+            }
+          ],
+          "title": "LATENCY METRICS",
+          "type": "graph",
+          "xaxis": {
+            "mode": "time"
+          }
+        }
+    ],
+    "refresh": "30s",
+    "templating": {
+      "list": [
+        {
+            "datasource": "TE_GRAFANA",
+            "includeAll": true,
+            "multi": true,
+            "name": "VIP",
+            "query": "SELECT vip FROM udp_client_vip_metrics",
+            "refresh": 1,
+            "type": "query"
+        },
+        {
+            "datasource": "TE_GRAFANA",
+            "includeAll": true,
+            "multi": true,
+            "name": "METHOD",
+            "query": "SELECT method FROM udp_client_url_metrics",
+            "refresh": 1,
+            "type": "query"
+        },
+        {
+            "datasource": "TE_GRAFANA",
+            "includeAll": true,
+            "multi": true,
+            "definition": "SELECT host_ip FROM udp_client_url_metrics",
+            "name": "HOST_IP",
+            "query": "SELECT host_ip FROM udp_client_url_metrics",
+            "refresh": 1,
+            "type": "query"
+        },
+        {
+            "datasource": "TE_GRAFANA",
+            "includeAll": true,
+            "multi": true,
+            "name": "URL",
+            "query": "SELECT uri FROM error_metrics",
+            "refresh": 1,
+            "type": "query"
+        },
+        {
+            "datasource": "TE_GRAFANA",
+            "name": "START_TIME",
+            "query": "SELECT CAST(start_time at time zone 'utc' at time zone 'Asia/Kolkata' as Varchar(25)) FROM running_configs",
+            "refresh": 1,
+            "type": "query"
+        }
+      ]
+    },
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "title": "UDP CLIENT METRICS",
+    "uid": "7zgZK8WGk"
+  }
