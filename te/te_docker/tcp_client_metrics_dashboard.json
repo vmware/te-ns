@@ -1,0 +1,229 @@
+{
+    "editable": true,
+    "panels": [
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 0
+        },
+        "id": 5,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+        {
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  ts AS \"time\",\nconnections, sessions\nFROM tcp_client_vip_metrics\nWHERE\n  $__timeFilter(ts) and host_ip IN($Host_Ip) and vip IN($VIP) and res_hash IN($resource_hash) and ses_hash IN($session_hash)",
+            "refId": "A",
+            "timeColumnType": "timestamp"
+        }
+        ],
+        "title": "TCP_VIP_METRICS",
+        "type": "graph",
+        "xaxis": {
+            "mode": "time"
+        }
+    },
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 7
+        },
+        "id": 3,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+        {
+              "format": "time_series",
+              "rawQuery": true,
+              "rawSql": "SELECT\n  ts AS \"time\",\n  sessions,open_connections,cycles_complete,total_connections, reqs_sent, resp_rcvd, http_gets_sent, http_gets_rcvd,http_posts_sent,http_posts_rcvd,failed_reqs,bytes_download\nFROM tcp_client_ses_metrics\nWHERE\n  $__timeFilter(ts) and host_ip IN($Host_Ip) and res_hash IN($resource_hash) and ses_hash IN($session_hash)",
+              "refId": "A",
+              "timeColumnType": "timestamp"
+        }
+        ],
+        "title": "TCP_SESSION_METRICS",
+        "type": "graph",
+        "xaxis": {
+            "mode": "time"
+        }
+    },
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 15
+        },
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+          {
+              "format": "time_series",
+              "rawQuery": true,
+              "rawSql": "SELECT\n  ts AS \"time\",\n  reqs_sent,resp_rcvd,http_gets_sent,http_gets_rcvd,http_posts_sent,http_posts_rcvd,responses_1xx,responses_2xx,responses_200,responses_3xx,responses_4xx,responses_404,responses_5xx,failed_reqs,bytes_download\nFROM tcp_client_url_metrics\nWHERE\n  $__timeFilter(ts) and host_ip IN($Host_Ip) and vip IN($VIP)and method IN($METHOD) and uri IN($URI) and res_hash IN($resource_hash) and ses_hash IN($session_hash)",
+              "refId": "A",
+              "timeColumnType": "timestamp"
+          }
+        ],
+        "title": "TCP_URL_METRICS",
+        "type": "graph",
+        "xaxis": {
+          "mode": "time"
+        }
+    },
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 23
+        },
+        "id": 9,
+        "legend": {
+            "current": true,
+            "show": true,
+            "values": true
+        },
+        "targets": [
+        {
+            "format": "time_series",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  ts AS \"time\",\n  mean_latency,var_latency,latency_min,latency_max\nFROM tcp_client_url_metrics\nWHERE\n  $__timeFilter(ts) and res_hash IN($resource_hash) and ses_hash IN($session_hash)",
+            "refId": "A",
+            "timeColumnType": "timestamp"
+        }
+        ],
+        "title": "LATENCY METRICS",
+        "type": "graph",
+        "xaxis": {
+          "mode": "time"
+        }
+    },
+    {
+        "datasource": "TE_GRAFANA",
+        "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 31
+        },
+        "id": 12,
+        "legend": {
+            "show": true,
+            "total": true,
+            "values": true
+        },
+        "targets": [
+        {
+            "format": "time_series",
+            "metricColumn": "vip",
+            "rawQuery": true,
+            "rawSql": "SELECT\n  ts AS \"time\",\n  vip AS metric,\n  ( CASE WHEN  '$RESPONSES' = 'responses_1xx' THEN responses_1xx\n         WHEN  '$RESPONSES' = 'responses_2xx' THEN responses_2xx\n         WHEN  '$RESPONSES' = 'responses_3xx' THEN responses_3xx\n         WHEN  '$RESPONSES' = 'responses_4xx' THEN responses_4xx\n         WHEN  '$RESPONSES' = 'responses_5xx' THEN responses_5xx\n         WHEN  '$RESPONSES' = 'responses_200' THEN responses_200\n         WHEN  '$RESPONSES' = 'responses_404' THEN responses_404\nEND) as responses\nFROM tcp_client_url_metrics\nWHERE\n  $__timeFilter(ts)",
+            "refId": "A",
+            "timeColumnType": "timestamp"
+        }
+        ],
+        "title": "$RESPONSES",
+        "type": "graph",
+        "xaxis": {
+            "mode": "time"
+        }
+    }
+  ],
+    "refresh": "30s",
+    "templating": {
+      "list": [
+      {
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "VIP",
+          "query": "SELECT vip FROM tcp_client_vip_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "Host_Ip",
+          "query": "SELECT host_ip FROM tcp_client_vip_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "METHOD",
+          "query": "SELECT method FROM tcp_client_url_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {  
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "URI",
+          "query": "SELECT uri FROM tcp_client_url_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "resource_hash",
+          "query": "SELECT res_hash FROM tcp_client_vip_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "includeAll": true,
+          "multi": true,
+          "name": "session_hash",
+          "query": "SELECT ses_hash FROM tcp_client_vip_metrics",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+          "datasource": "TE_GRAFANA",
+          "name": "START_TIME",
+          "query": "SELECT CAST(start_time at time zone 'utc' at time zone 'Asia/Kolkata' as Varchar(25)) FROM running_configs",
+          "refresh": 1,
+          "type": "query"
+      },
+      {
+        "datasource": "TE_GRAFANA",
+        "name": "RESPONSES",
+        "query": "SELECT COLUMN_NAME  FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'tcp_client_url_metrics' and COLUMN_NAME LIKE 'responses_%'",
+        "refresh": 1,
+        "type": "query"
+      }
+  ]
+  },
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "title": "TCP CLIENT METRICS",
+    "uid": "XSb_SGWGk"
+}
