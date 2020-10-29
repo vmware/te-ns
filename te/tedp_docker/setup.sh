@@ -30,12 +30,13 @@
 #**********************************************************************************************
 
 #!/bin/sh
-apt-get update  # To get the latest package lists
+apt update  # To get the latest package lists
 cd /tmp/
-apt-get install automake libtool m4 -y
-apt-get install libjson0 libjson0-dev -y
-apt-get build-dep curl
-apt-get install build-essential nghttp2 libnghttp2-dev libssl-dev -y
+apt install automake libtool m4 -y
+apt install libjson0 libjson0-dev -y
+apt build-dep curl -y
+apt install wget -y
+apt install build-essential nghttp2 libnghttp2-dev libssl-dev -y
 
 #OPENSSL 1.1.1a
 wget https://www.openssl.org/source/openssl-1.1.1a.tar.gz

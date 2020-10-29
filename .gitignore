@@ -1,0 +1,15 @@
+# Object files
+*.o
+*.swp
+*.swo
+
+# Libraries
+*.lib
+*.a
+
+# Tar balls
+*.tar
+*tar.gz
+
+# pyc
+*.pyc

@@ -53,8 +53,6 @@ EXIT_CHECKSUM                  = 19
 EXIT_NO_PORT                   = 20
 EXIT_NO_NETSTAT_CMD            = 21
 EXIT_NO_SYSCTL_OR_SERVICE_CMD  = 22
-EXIT_DOCKERHUB_DOWNLOAD        = 23
-EXIT_DOCKERRUN_COMMAND_FAILED  = 24
 EXIT_SUCCESS                   = 200
 EXIT_FAILURE                   = 404
 
@@ -94,7 +92,7 @@ class Logger:
 class DOCKER_INITIALIZER:
 
     def __init__(self, pathToDocker, ip, nginxPort, stat_collect_interval, stat_dump_interval, \
-        basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel, my_ip, flask_port):
+        basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel):
         self.pathToDocker = pathToDocker
         self.ip = ip
         self.nginxPort = nginxPort
@@ -105,8 +103,6 @@ class DOCKER_INITIALIZER:
         self.te_logpath = te_logpath
         self.te_loglevel = te_loglevel
         self.typeOfDocker = typeOfDocker
-        self.my_ip = my_ip
-        self.flask_port = flask_port
         self.__docker_load_reqd = False
         docker_type_map = {
             'TE' : {
@@ -122,11 +118,9 @@ class DOCKER_INITIALIZER:
                 'repo_name'           : 'tedp',
                 'run_cmd'             : "docker run --privileged --cap-add=SYS_PTRACE --security-opt " \
                                         "seccomp=unconfined -v /tmp/:/te_host/ -v $HOME:/te_root/ " \
-                                        "-v $HOME/.ssh/:/root/.ssh/ -v /var/run/netns:/var/run/netns " \
-                                        "-e IPADDRESS=%s -e CTRL_IPADDRESS=%s -e CTRL_FLASK_PORT=%s " \
+                                        "-v /var/run/netns:/var/run/netns " \
                                         "--ulimit core=9999999999 --name tedpv2.0 --net=host -d -it " \
-                                        "--tmpfs /tmp/ramcache:rw,size=104857600 tedp:v2.0" %(
-                                            self.my_ip, self.ip, self.flask_port)
+                                        "--tmpfs /tmp/ramcache:rw,size=104857600 tedp:v2.0 /sbin/init"
             }
         }
         self.docker_detials = docker_type_map[typeOfDocker]
@@ -148,7 +142,6 @@ class DOCKER_INITIALIZER:
         try:
             DICT_OF_SERVICES = {"flask"    : "5000",
                                 "nginx"    : "5001",
-                                "grafana"  : "5002",
                                 "redis"    : "6379",
                                 "postgres" : "5432",
                                 "zmq"      : "5555"}
@@ -185,18 +178,18 @@ class DOCKER_INITIALIZER:
             self.lgr.debug("pre-occupied ports in controller machine were %s" %(str(listOut)))
             self.lgr.debug("Chosen ports for services are %s " %(str(DICT_OF_SERVICES)))
             self.docker_detials['run_cmd'] = "docker run --privileged -d -it --name %s " \
-                                    "--net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/ "\
+                                    "--net=host -v /tmp/:/te_host/ "\
                                     "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s "\
                                     "-e REDIS_PORT=%s -e NGINX_PORT=%s -e POSTGRES_PORT=%s "\
-                                    "-e ZMQ_PORT=%s -e GRAFANA_PORT=%s -e STAT_COLLECT_INTERVAL=%d "\
+                                    "-e ZMQ_PORT=%s -e STAT_COLLECT_INTERVAL=%d "\
                                     "-e STAT_DUMP_INTERVAL=%d -e LOGPATH=%s -e LOGLEVEL=%d %s" \
                                     %(self.docker_detials["container_name"], \
                                     self.te_controller_ip, DICT_OF_SERVICES['flask'], \
                                     DICT_OF_SERVICES['redis'], DICT_OF_SERVICES['nginx'], \
                                     DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'], \
-                                    DICT_OF_SERVICES['grafana'], self.stat_collect_interval, \
+                                    self.stat_collect_interval, \
                                     self.stat_dump_interval, self.te_logpath, self.te_loglevel,
-                                    self.basePath)
+                                    self.docker_detials["image_name"])
             print("flask=%s" %DICT_OF_SERVICES['flask'])
             print("postgres=%s" %DICT_OF_SERVICES['postgres'])
             print("nginx=%s" %DICT_OF_SERVICES['nginx'])
@@ -283,16 +276,6 @@ class DOCKER_INITIALIZER:
         self.lgr.debug("Prepared the machine")
         return True
 
-    def getDockerImage(self):
-        cmd = "docker pull {}".format(self.basePath)
-        self.lgr.debug("Running command '{}'".format(cmd))
-        (out, err) = self.__exec_cmd(cmd)
-        if err:
-            self.lgr.debug("ERROR in downloading dockerhub image %s" %str(err))
-            sys.exit(EXIT_DOCKERHUB_DOWNLOAD)
-        self.__docker_load_reqd = False
-        return True
-
     def getTarImage(self):
 
         try:
@@ -311,7 +294,7 @@ class DOCKER_INITIALIZER:
                 self.__docker_load_reqd = True
                 self.lgr.debug("Unable to get image.id from remote")
             else:
-                ImageIdOfRemoteTar = (response.content.decode('utf-8').split(' ')[0]).strip()
+                ImageIdOfRemoteTar = (response.content.split(' ')[0]).strip()
                 (out, err) = self.__exec_cmd("docker images -q -a {}".format(
                     self.docker_detials['image_name']))
                 ImageIdOfLocal = out.replace("\n", "").strip()
@@ -336,14 +319,14 @@ class DOCKER_INITIALIZER:
                     self.lgr.error("Unable to calc checksum")
                     sys.exit(EXIT_CHECKSUM)
                 response = requests.get(checkSumLink, stream=True)
-                checkSumOfRemoteTar = response.content.decode("utf-8").split(' ')[0]
+                checkSumOfRemoteTar = response.content.split(' ')[0]
                 self.lgr.debug("checkSumOfRemoteTar %s" %checkSumOfRemoteTar)
                 if(checksum == checkSumOfRemoteTar):
                     self.lgr.debug("Matches")
                     return True
                 else:
                     # If check.sum also doesn't match, then get the tar
-                    cmd = "rm -f " + tarFile + "; wget --no-check-certificate -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
+                    cmd = "rm -f " + tarFile + "; wget -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
                     self.lgr.debug("GETTING THE UPDATED IMAGE WITH CMD='%s'" %cmd)
                     (out, err) = self.__exec_cmd(cmd)
                     if err:
@@ -352,7 +335,7 @@ class DOCKER_INITIALIZER:
                     self.lgr.debug("Downloaded TAR Image")
                     return True
             else:
-                cmd = "wget --no-check-certificate -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
+                cmd = "wget -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
                 self.lgr.debug("GETTING THE NEW IMAGE WITH CMD='%s'" %cmd)
                 (out, err) = self.__exec_cmd(cmd)
                 if(err):
@@ -388,9 +371,6 @@ class DOCKER_INITIALIZER:
             cmd = self.docker_detials['run_cmd']
             self.lgr.debug("PERFORMING A DOCKER RUN USING CMD=%s" %cmd)
             (out, err) = self.__exec_cmd(cmd)
-            if err:
-                self.lgr.error("Unable to execute docker run command! ERROR: %s " %str(out))
-                sys.exit(EXIT_DOCKERRUN_COMMAND_FAILED)
 
             # Post run command, the docker is expected to be up
             cmd = "docker ps | grep {} | wc -l".format(self.docker_detials['container_name'])
@@ -409,11 +389,7 @@ class DOCKER_INITIALIZER:
             sys.exit(EXIT_RUN_CONTAINER)
 
     def run(self):
-        if typeOfDocker == "TE":
-            download_image = self.getDockerImage
-        else:
-            download_image = self.getTarImage
-        if self.isAllEssentialsInstalled() and self.prepareBed() and download_image() and self.loadAndStartTheContainer():
+        if self.isAllEssentialsInstalled() and self.prepareBed() and self.getTarImage() and self.loadAndStartTheContainer():
             self.lgr.debug("SUCCESS")
             sys.exit(EXIT_SUCCESS)
         else:
@@ -424,14 +400,10 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-w','--path_to_docker',type=str, required=True,
             help='Path to save the docker tar')
-    parser.add_argument('-ip','--ip',type=str, required=False, default="127.0.0.1",
+    parser.add_argument('-ip','--ip',type=str, required=True,
             help='IP to pull the tar file from')
-    parser.add_argument('-my_ip','--my_ip',type=str, required=False, default="127.0.0.1",
-            help='IP of the machine running this script')
-    parser.add_argument('-p','--nginx_port',type=str, required=False, default="5001",
+    parser.add_argument('-p','--nginx_port',type=str, required=True,
             help='Nginx Port of remote machine serving the tar')
-    parser.add_argument('-fp','--flask_port',type=str, required=False, default="5000",
-            help='Flask port to talk to controller from data path')
     parser.add_argument('-b','--base_path',type=str, default="/",
             help='Path of the the Docker Image location')
     parser.add_argument('-t','--type_of_docker',type=str, required=True,
@@ -460,8 +432,6 @@ if __name__ == "__main__":
     stat_dump_interval = args.stat_dump_interval
     te_logpath = args.logpath
     te_loglevel = args.loglevel
-    my_ip = args.my_ip
-    flask_port = args.flask_port
 
     if typeOfDocker == "TE":
         te_controller_ip = args.host_ip
@@ -471,7 +441,6 @@ if __name__ == "__main__":
         te_controller_ip = None
 
     obj = DOCKER_INITIALIZER(pathToDocker, ip, nginxPort, stat_collect_interval, \
-        stat_dump_interval, basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel,
-        my_ip, flask_port)
+        stat_dump_interval, basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel)
     obj.run()
 

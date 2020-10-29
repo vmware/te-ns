@@ -1,9 +1,0 @@
-{
-    "session-config" : [{
-        "session-type" : "Browser",
-        "num-sessions" : 10,
-        "connection-range" : [4,4],
-        "requests-range" : [20,20],
-        "cycle-type" : "resume"
-    }]
-}

@@ -1,8 +1,0 @@
-{
-    "resource-config" : {
-        "type" : "server",
-        "port-list" : [5003],
-        "log-level" : "default",
-        "log-path" : "/tmp/ramcache/"
-    }
-}

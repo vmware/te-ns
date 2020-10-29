@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #**********************************************************************************************
 # Traffic Emulator for Network Services
 # Copyright 2020 VMware, Inc
@@ -29,49 +31,51 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-#!/bin/sh
-apt-get update  # To get the latest package lists
-cd /tmp/
-apt-get install automake libtool m4 -y
-apt-get install libjson0 libjson0-dev -y
-apt-get build-dep curl
-apt-get install build-essential nghttp2 libnghttp2-dev libssl-dev -y
+set -e
 
-#OPENSSL 1.1.1a
-wget https://www.openssl.org/source/openssl-1.1.1a.tar.gz
-tar -zxf openssl-1.1.1a.tar.gz && rm openssl-1.1.1a.tar.gz
-cd openssl-1.1.1a
-./config && make -j8 && make install
-mv /usr/bin/openssl ~/tmp
-ln -s /usr/local/bin/openssl /usr/bin/openssl
-ldconfig
+if [[ $# -ne 1 ]] ; then
+    echo "Improper Input"
+    echo " $0 <PATH TO TRAFFIC ENGINE>"
+    exit 1
+fi
 
-#ZeroMQ
-echo "deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/ ./" >> /etc/apt/sources.list
-wget https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | sudo apt-key add
-apt-get install -y libzmq3-dev
+GREEN='\033[0;32m'
+NC='\033[0m'
+PATH_TO_TE=$1
+TARGET=.tmp_te_folder_to_tar
+CURR_DIR=$(pwd)
+echo ${CURR_DIR}
 
-#LIBCURL
-wget https://curl.haxx.se/download/curl-7.67.0.tar.gz
-tar -xvf curl-7.67.0.tar.gz
-cd curl-7.67.0
-#./configure --with-nghttp2 --prefix=/usr/local --with-ssl=/usr/local/ssl
-#For openssl 1.1.1 support (TLSv1.3)
-./configure --with-nghttp2 --prefix=/usr/local --with-default-ssl-backend=openssl
-make -j8
-make install
-ldconfig
-cd /tmp/
-rm -rf curl*
+#BUILD AND SAVE TEDP DOCKER
+docker container prune -f && docker image prune -f
+docker build -t tedp_bin:v2.0 -f $PATH_TO_TE/te/tedp_docker/tedp_bin_builder.dockerfile $PATH_TO_TE/
+docker build -t tedp:v2.0 -f $PATH_TO_TE/te/tedp_docker/Dockerfile $PATH_TO_TE/
+docker save -o $PATH_TO_TE/te/tedp_docker.tar tedp:v2.0
+IMAGE_ID_TEDP=`docker images -q -a tedp:v2.0`
+echo -e "${GREEN}Perfomed a Docker save of TE_DP Docker ${NC}"
 
-#LIBUV
-wget https://dist.libuv.org/dist/v1.27.0/libuv-v1.27.0.tar.gz
-tar xvf libuv-v1.27.0.tar.gz
-cd libuv-v1.27.0/
-./autogen.sh
-./configure
-make -j8
-make install
-cd /tmp/
-rm -rf libuv*
-ldconfig
+#BUILD AND SAVE TE DOCKER
+docker build -t te:v2.0 --build-arg IMAGE_ID=$IMAGE_ID_TEDP -f $PATH_TO_TE/te/te_docker/Dockerfile $PATH_TO_TE/te/
+docker save -o $PATH_TO_TE/te/te_docker.tar te:v2.0
+IMAGE_ID_TE=`docker images -q -a te:v2.0`
+echo -e "${GREEN}Performed a Docker save of TE Docker ${NC}"
+
+#TAR TO SHIP
+mkdir -pv ${TARGET}/static/
+cp $PATH_TO_TE/te/te_docker.tar ${TARGET}/
+cp $PATH_TO_TE/te/TE_WRAP.py ${TARGET}/
+cp $PATH_TO_TE/te/GET_AND_RUN_DOCKER_IMAGE.py ${TARGET}/
+cp $PATH_TO_TE/te/TE_SWAGGER.py ${TARGET}/
+cp $PATH_TO_TE/te/setup_te_swagger.json ${TARGET}/static/
+cp $PATH_TO_TE/te/te-swagger* ${TARGET}/
+md5sum $PATH_TO_TE/te/te_docker.tar > ${TARGET}/check.sum
+echo ${IMAGE_ID_TE} > ${TARGET}/image.id
+chmod -R 755 ${TARGET}/
+cd ${TARGET}
+
+echo -e "${GREEN} Contents to be tarred ${NC}"
+ls -l
+tar -zcvf ${CURR_DIR}/traffic_engine.tar.gz *
+cd ${CURR_DIR}
+rm -rf ${TARGET}
+echo -e "${GREEN}Saved at ${CURR_DIR}/traffic_engine.tar.gz ${NC}"

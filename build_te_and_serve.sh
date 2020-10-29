@@ -1,8 +1,41 @@
-mkdir -p $PATH_TO_TE/te_dp/bin#!/bin/bash
+#!/bin/bash
+
+#**********************************************************************************************
+# Traffic Emulator for Network Services
+# Copyright 2020 VMware, Inc
+# The BSD-2 license (the "License") set forth below applies to all parts of
+# the Traffic Emulator for Network Services project. You may not use this file
+# except in compliance with the License.
+#
+# BSD-2 License
+#
+# Redistribution and use in source and binary forms, with or without modification,
+# are permitted provided that the following conditions are met:
+#
+# Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+# OF SUCH DAMAGE
+#**********************************************************************************************
+
 set -e
 
-if [[ $# -ne 3 ]] ; then
-    echo 'Pass <repo-name-to-build-the-docker-image> <machine-IP> and <path to traffic engine> to save it!'
+if [[ $# -ne 3 && $# -ne 4 ]] ; then
+    echo "Improper Input"
+    echo "$0 <REPO_NAME> <REPO_IP> <PATH TO TRAFFIC ENGINE> <SWAGGER_PORT>(optional -- default 4000)"
     exit 1
 fi
 
@@ -10,10 +43,16 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 USER=root
 PASSWORD=avi123
+REPO_NAME=$1
 TARGET=/usr/share/nginx/html/$1/
 IP=$2
 PATH_TO_TE=$3
-PWD=$(pwd)
+
+if [[ $# -eq 4 ]] ; then
+    SWAGGER_PORT=$4
+else
+    SWAGGER_PORT=4000
+fi
 
 #BUILD AND SAVE TEDP DOCKER
 docker container prune -f && docker image prune -f
@@ -42,3 +81,10 @@ sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "md5sum ${TA
 sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo ${IMAGE_ID_TE} > ${TARGET}/image.id; chmod -R 755 ${TARGET}"
 echo -e "${GREEN}Computed and save the check.sum and contents of ${TARGET} are ${NC}"
 sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "ls -l ${TARGET}"
+
+#START SERVICE TO DEPLOY TE CONTROLLER
+sshpass -p $PASSWORD scp -o "StrictHostKeyChecking no" $PATH_TO_TE/te/te-swagger* $USER@$IP:/etc/systemd/system/
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo \"export IP='${IP}'\" > /etc/te-swagger@${REPO_NAME}.conf"
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo \"export PORT='${SWAGGER_PORT}'\" >> /etc/te-swagger@${REPO_NAME}.conf"
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "systemctl daemon-reload"
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "systemctl restart te-swagger@${REPO_NAME}.service && systemctl status te-swagger@${REPO_NAME}.service"

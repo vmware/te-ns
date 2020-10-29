@@ -1,8 +1,0 @@
-Install
-================
-
-docker commit te_postgres_redis
-sudo docker save -o /home/aviuser/te.tar te
-cp te.tar /usr/share/nginx/html/te_docker.tar
-cd /usr/share/nginx/html/
-md5sum te_docker.tar > check.sum

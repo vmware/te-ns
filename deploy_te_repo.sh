@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #**********************************************************************************************
 # Traffic Emulator for Network Services
 # Copyright 2020 VMware, Inc
@@ -29,49 +31,44 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-#!/bin/sh
-apt-get update  # To get the latest package lists
-cd /tmp/
-apt-get install automake libtool m4 -y
-apt-get install libjson0 libjson0-dev -y
-apt-get build-dep curl
-apt-get install build-essential nghttp2 libnghttp2-dev libssl-dev -y
+set -e
 
-#OPENSSL 1.1.1a
-wget https://www.openssl.org/source/openssl-1.1.1a.tar.gz
-tar -zxf openssl-1.1.1a.tar.gz && rm openssl-1.1.1a.tar.gz
-cd openssl-1.1.1a
-./config && make -j8 && make install
-mv /usr/bin/openssl ~/tmp
-ln -s /usr/local/bin/openssl /usr/bin/openssl
-ldconfig
+if [ "$EUID" -ne 0 ]
+    then echo "Please run as root"
+    exit 1
+fi
 
-#ZeroMQ
-echo "deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/ ./" >> /etc/apt/sources.list
-wget https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | sudo apt-key add
-apt-get install -y libzmq3-dev
+if [[ $# -ne 4 && $# -ne 5 ]] ; then
+    echo "Improper Input"
+    echo " $0 <PATH TO NGINX ROOT> <REPO NAME> <REPO_IP> <PATH TO traffic_engine.tar.gz> <SWAGGER_PORT>(optional -- default 4000)"
+    exit 1
+fi
 
-#LIBCURL
-wget https://curl.haxx.se/download/curl-7.67.0.tar.gz
-tar -xvf curl-7.67.0.tar.gz
-cd curl-7.67.0
-#./configure --with-nghttp2 --prefix=/usr/local --with-ssl=/usr/local/ssl
-#For openssl 1.1.1 support (TLSv1.3)
-./configure --with-nghttp2 --prefix=/usr/local --with-default-ssl-backend=openssl
-make -j8
-make install
-ldconfig
-cd /tmp/
-rm -rf curl*
+GREEN='\033[0;32m'
+NC='\033[0m'
+NGINX_ROOT=$1
+REPO_NAME=$2
+TARGET=$1/$2
+REPO_IP=$3
+PATH_TO_TE_TAR=$4
 
-#LIBUV
-wget https://dist.libuv.org/dist/v1.27.0/libuv-v1.27.0.tar.gz
-tar xvf libuv-v1.27.0.tar.gz
-cd libuv-v1.27.0/
-./autogen.sh
-./configure
-make -j8
-make install
-cd /tmp/
-rm -rf libuv*
-ldconfig
+if [[ $# -eq 5 ]] ; then
+    SWAGGER_PORT=$5
+else
+    SWAGGER_PORT=4000
+fi
+
+PWD=$(pwd)
+
+rm -rf ${TARGET}
+mkdir -v ${TARGET}
+echo "tar -xzvf ${PATH_TO_TE_TAR} -C ${TARGET}"
+tar -xzvf ${PATH_TO_TE_TAR} -C ${TARGET}
+
+#START SERVICE TO DEPLOY TE CONTROLLER
+mv ${TARGET}/te-swagger* /etc/systemd/system/
+echo "export IP='${REPO_IP}'" > /etc/te-swagger@${REPO_NAME}.conf
+echo "export PORT=${SWAGGER_PORT}" >> /etc/te-swagger@${REPO_NAME}.conf
+echo "export NGINX_ROOT=${NGINX_ROOT}" >> /etc/te-swagger@${REPO_NAME}.conf
+systemctl daemon-reload
+systemctl restart te-swagger@${REPO_NAME}.service && systemctl status te-swagger@${REPO_NAME}.service
