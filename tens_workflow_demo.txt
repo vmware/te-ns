@@ -1,0 +1,177 @@
+How to use TE in a single
+In [1]: from TE_WRAP import *
+ 
+#BUILDING CONFIGS
+In [2]: resource_config = {'res' : {
+    'default-get-post-ratio': '1:0',
+    'get-profiles': {'g1': [{'uri': '128b.txt'}]},
+    'http-version': '1.1',
+    'vip-list': [{'get-profile': 'g1', 'vip': 'http://1.1.1.1'}]
+}}
+ 
+In [3]: session_config = {'ses'  : {
+     'connection-range': [1, 1],
+     'cycle-type': 'restart',
+     'num-sessions': 4,
+     'requests-range': [10, 10],
+     'session-type' : 'MaxPerf'
+    }
+}
+ 
+In [4]: instanceProfileConfig = {'tedp_inst1' : {'res-tag': 'res', 'ses-tag': 'ses'}}
+ 
+In [5]: te_controller = {'host': '127.0.0.1',
+            'user': 'root',
+            'passwd':'tens123'}
+ 
+In [6]: te_dp_dict = {
+    '127.0.0.1': {'instance_profile': {'tedp_inst1': 1},
+                    'passwd': 'tens123',
+                    'tag': 'telocal1',
+                    'user': 'root'}}
+ 
+#MAKING TE_NS TE OBJECT
+In [7]: tens_te_obj = tensTE(te_controller)
+ 
+#SETUP TE
+#USE repo_path=’stable-repo’ for the latest stable code
+In [8]: tens_te_obj.setup_te(repo_path='stable-repo', path_to_python_file_to_copy=<workspace>)
+TE Docker Image is hosted in {'ip': '10.52.0.185', 'port': '80', 'path_to_python_file_to_copy': <workspace>, 'path': '/stable-repo/'}
+Executing command = 'python /root/GET_AND_RUN_DOCKER_IMAGE.py -w /root/ -ip 10.52.0.185 -p 80 -b /stable-repo/ -t TE -h_ip 127.0.0.1             -ct 15 -dt 15 -lp /tmp/ -ll 10'
+Exit code is 200
+flask ==> 18829
+postgres ==> 18710
+nginx ==> 55150
+.
+.
+.
+.
+.
+.
+Out[9]:
+{'status': True,
+ 'statusmessage': {u'flask': u'18829',
+  u'nginx': u'55150',
+  u'postgres': u'18710'}}
+ 
+#SETUP TEDP
+In [10]: tens_te_obj.setup_tedp(te_dp_dict)
+Out[10]: {u'status': True, u'statusmessage': u'Launched TEDPs'}
+ 
+#CONNECT TE AND TEDP
+In [11]: tens_te_obj.connect(te_dp_dict)
+Out[11]: {u'status': True, u'statusmessage': u'Connected all TEs and TEDPs’}
+ 
+#START TRAFFIC
+In [12]: tens_te_obj.start(resource_config, session_config, instanceProfileConfig, te_dp_dict)
+Out[12]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
+ 
+#AT LEAST WAIT FOR 15 SECS BEFORE GETTING THE 1ST METRICS
+In [13]: time.sleep(15)
+ 
+#GET VIP METRICS
+In [14]: tens_te_obj.get_vip_metrics("TOTAL")
+Out[14]:
+{
+    u'status': True,
+     u'statusmessage’: {
+        u’vip=http://1.1.1.1': {
+            u'bytes_download': u'150607360.0',
+            u'complete_time': u'3662.521236',
+            u'connections': u'117660.0',
+            u'cps': u'784.4',
+            u'failed_reqs': u'0.0',
+            u'http_gets_rcvd': u'1176620.0',
+            u'http_gets_sent': u'1176640.0’,
+            u'http_posts_rcvd': u'0.0',
+            u'http_posts_sent': u'0.0',
+            u'len_fail': u'0.0',
+            u'max_time': u'0.066611',
+            u'min_time': u'0.000215',
+            u'persist_fail': u'0.0',
+            u'reqs_sent': u'1176640.0',
+            u'resp_rcvd': u'1176620.0',
+            u'responses_1xx': u'0.0',
+            u'responses_200': u'1176620.0',
+            u'responses_2xx': u'1176620.0',
+            u'responses_3xx': u'0.0',
+            u'responses_404': u'0.0',
+            u'responses_4xx': u'0.0',
+            u'responses_5xx': u'0.0',
+            u'rps': u'7844.13333333',
+            u'sessions': u'117660.0',
+            u'tcp_failures': u'0.0',
+            u'tput': u’1004049.06667'
+        }
+    }
+}
+ 
+#Updating Configs
+In [15]: r = {
+    u'default-get-post-ratio': u'1:0',
+     u'get-profiles': {u'g1': [{u'uri': u'128b.txt'}]},
+     u'http-version': u'1.1',
+     u'vip-list': [{u'get-profile': u'g1', u'vip': u'http://1.1.1.1'}]
+}
+ 
+In [16]: s = {
+    u'connection-range': [1, 1],
+     u'cycle-type': u'restart',
+     u'num-sessions': 4,
+     u'requests-range': [1, 1],
+     u'session-type': u'MaxPerf'
+}
+ 
+In [17]: resource_config = {'res' : r}
+ 
+In [18]: session_config = {'ses'  :s}
+ 
+#GETTING CURRENT TE TIME FOR FILTERING METRICS
+In [19]: tens_te_obj.get_current_te_time()
+Out[19]: {u'status': True, u'statusmessage': u'2019-05-27 09:51:09'}
+ 
+#UPDATING TRAFFIC
+In [20]: tens_te_obj.update_config(resource_config, session_config, instanceProfileConfig, te_dp_dict)
+Out[20]:
+{u'status': True,
+ u'statusmessage': {u'Update': {u'All TEDPs Updated': {u'127.0.0.1': {u'tedp_inst1': 1}}}}}
+ 
+#GETTING METRICS FOR ONLY THE UPDATED CONFIGS
+In [21]: tens_te_obj.get_vip_metrics("TOTAL",filter_ts_range=['2019-05-27 09:51:09',None])
+Out[21]:
+{
+    u'status': True,
+     u'statusmessage': {
+        u’vip=http://1.1.1.1': {
+            u'bytes_download': u'93657344.0',
+            u'complete_time': u'627.101949',
+            u'connections': u'630345.0',
+            u'cps': u'4669.22222222',
+            u'failed_reqs': u'0.0',
+            u'http_gets_rcvd': u'731698.0',
+            u'http_gets_sent': u'731707.0’,
+            u'http_posts_rcvd': u'0.0',
+            u'http_posts_sent': u'0.0',
+            u'len_fail': u'0.0',
+            u'max_time': u'0.097567',
+            u'min_time': u'0.000186',
+            u'persist_fail': u'0.0',
+            u'reqs_sent': u'731707.0',
+            u'resp_rcvd': u'731698.0',
+            u'responses_1xx': u'0.0',
+            u'responses_200': u'731698.0',
+            u'responses_2xx': u'731698.0',
+            u'responses_3xx': u'0.0',
+            u'responses_404': u'0.0',
+            u'responses_4xx': u'0.0',
+            u'responses_5xx': u'0.0',
+            u'rps': u'5419.98518519',
+            u'sessions': u'630345.0',
+            u'tcp_failures': u'0.0',
+            u'tput': u’693758.103704'
+        }
+    }
+}
+ 
+In [22]: tens_te_obj.stop()
+Out[22]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
