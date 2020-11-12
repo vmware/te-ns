@@ -41,7 +41,7 @@
     },
     "externalDocs" : {
 	"description" : "CONFLUENCE",
-	"url" : "https://avinetworks.atlassian.net/wiki/spaces/EN/pages/23134376/Traffic+Engine+Architecture"
+	"url" : "tens_te_architecture.pdf"
     }
 
 }

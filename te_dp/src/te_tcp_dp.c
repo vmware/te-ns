@@ -992,7 +992,7 @@ size_t te_header_function_cb(void *buffer, size_t size, size_t nitems, void *req
     error_metric = http_url_metric->error_metrics;
     char *header = NULL;
     if (session->session_cfg_p->persist_flag) {
-        header = strstr( buffer, "avi_srv_ip:" );
+        header = strstr( buffer, "tens_srv_ip:" );
         if (!header) {
             return (nitems*size);
         }

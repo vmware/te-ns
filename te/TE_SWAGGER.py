@@ -74,8 +74,8 @@ def setup_te():
     if (not(out)):
         return {"status" : False, "statusmessage" : "python not installed in TE controller"}
 
-    avi_te_obj = AviTE(te_controller_obj)
-    response = avi_te_obj.setup_te(repo_ip=input_args.ip, repo_path=input_args.repo_path,
+    tens_te_obj = TensTE(te_controller_obj)
+    response = tens_te_obj.setup_te(repo_ip=input_args.ip, repo_path=input_args.repo_path,
             path_to_python_file_to_copy=os.path.dirname(os.path.abspath(__file__)))
 
     if response.get('status', False):
