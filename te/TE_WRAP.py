@@ -74,10 +74,10 @@ lgr = Logger('[ TE WRAP ]', wrap_log_file, loglevel).getLogger()
 lgr.info("Starting the TE Process")
 lgr.info("ALL INIT DONE IN the TE Process")
 
-class AviTE():
-    """AVI TE implentation of the Stress Traffic Tool."""
+class TensTE():
+    """Tens TE implentation of the Stress Traffic Tool."""
     def __init__(self, te_controller):
-        """AVI TE Traffic Tool Constructor.
+        """Tens TE Traffic Tool Constructor.
 
 		Args:
             te_controller: dict, required

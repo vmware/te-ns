@@ -216,7 +216,7 @@ te_socket_node_t* te_search_udp_socket_hash(unsigned int hash, unsigned int clie
 te_socket_node_t* te_create_or_retrieve_udp_server_socket(struct sockaddr_in remote_sock_addr, \
     unsigned int client_ip, unsigned short client_port, unsigned long unique_stream_id, \
     udp_server_easy_handle_t *udp_server_easy_handle) {
-    // Calculating Hash taken from AVI code
+    // Calculating Hash taken by
     // XORing that value with the unique stream id
     unsigned int hash = ( ((((client_ip & 0x0f000000) >> 9) + fswap(client_port) + \
         fswap(udp_server_easy_handle->d_port) ) & 524287) ^ unique_stream_id) % te_socket_hashTbl.size;

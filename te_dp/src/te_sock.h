@@ -96,7 +96,7 @@ typedef struct te_socket_node_s {
     //**************************************//
 
     // Note that the remote_sock_addr's ip and port need not be same as client_ip and client_port
-    // The IP and Port in remote_sock_addr can denote the AVI's src port and ip
+    // The IP and Port in remote_sock_addr can denote the Application's src port and ip
     struct sockaddr_in            remote_sock_addr;
     unsigned int                  client_ip;
     unsigned short                client_port;

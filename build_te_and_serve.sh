@@ -42,7 +42,7 @@ fi
 GREEN='\033[0;32m'
 NC='\033[0m'
 USER=root
-PASSWORD=avi123
+PASSWORD=tens123
 REPO_NAME=$1
 TARGET=/usr/share/nginx/html/$1/
 IP=$2
