@@ -37,7 +37,7 @@ Traffic Engine functions with specific set of libraries and we are thankful to t
 |               |            |       |   Docker   |
 ## Compiling the datapath process
 * Move to te_dp folder
-	* `cd avi-dev/test/TrafficEngine/te_dp/`
+	* `cd <work-space>/te_dp/`
 * Install the necessary libraries (Only for debian)
 	* `./setup.sh`
 * Clean any existing binary
@@ -46,16 +46,14 @@ Traffic Engine functions with specific set of libraries and we are thankful to t
 	* `make all`
 
 ## How to access Traffic Engine
-* As of today one can access the codes from the repository of avi-dev in the path `avi-dev/test/TrafficEngine/`
+* As of today one can access the codes from the repository of github.`
 	* Using the code, one can build and use Traffic Engine with 1 Controller and as many datapaths as required
-* One can also pull from the repository maintained and use the code
-	* Repositories are maintained in `10.52.0.185` and `10.160.3.33`. Use `stable-repo` to get access to the latest tested code.
 
 ## How to get a fully fledged Traffic Engine (With Controller)
 * Traffic Engine has 2 parts to it. One is the Traffic Engine Controller and the other is Traffic Engine Datapath
 * The Controller acts as a single point of access which exposes various apis to start, stop, update and get metrics from the data path process
-* To get a sample run, please refer to the Confluence:
-	* https://avinetworks.atlassian.net/wiki/spaces/EN/pages/793215888/Sample+Single+Machine+TE+run
+* To get a sample run, please refer to tens_work_flow_demo.txt in home directory:
+       <work-space>/tens_workflow_demo.txt
 
 ## How to run a standalone datapath process
 * bin/te_dp [options]
