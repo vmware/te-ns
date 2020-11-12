@@ -857,7 +857,7 @@
                 },
                 "example" : {
                     "te_dp_dict" : {
-                        "127.0.0.1" : {"user":"root", "passwd":"avi123"}
+                        "127.0.0.1" : {"user":"root", "passwd":"tens123"}
                     }
                 }
             },
@@ -867,7 +867,7 @@
                     "type" : "object",
                     "properties": {
                         "user": {"type":"string", "default":"root"},
-                        "passwd": {"type":"string", "default":"avi123"}
+                        "passwd": {"type":"string", "default":"tens123"}
                     }
                 }
             },

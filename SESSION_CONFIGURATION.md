@@ -66,4 +66,4 @@
 
 ### PARAMETER ONLY FOR SESSION CONFIGURATION FOR TCP CLIENT:
 * **persistance** : Boolean describing if the client must check for persistance in it's end. By persistance we mean if the client is hitting the same server in the backend. In order to check for persistance, do the following in all the backend servers:
-  * Inside `http {` of nginx.conf, add `add_header avi_srv_ip <your_ip>;`. This header will be set by the server in the response which is used by TE to evaluate for the same.
+  * Inside `http {` of nginx.conf, add `add_header tens_srv_ip <your_ip>;`. This header will be set by the server in the response which is used by TE to evaluate for the same.
