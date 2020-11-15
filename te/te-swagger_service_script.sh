@@ -34,6 +34,7 @@ start()
     if [[ $IP == "NULL" ]]; then
         exit 1
     fi
+    echo "Executing `python3 $NGINX_ROOT/$REPO_NAME/TE_SWAGGER.py -rp $REPO_NAME -fp $PORT -ip $IP`"
     python3 $NGINX_ROOT/$REPO_NAME/TE_SWAGGER.py -rp $REPO_NAME -fp $PORT -ip $IP
 }
 

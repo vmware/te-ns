@@ -104,4 +104,4 @@ if __name__ == "__main__":
     repo_path = input_args.repo_path
     flask_port = input_args.flask_port
     ip = input_args.ip
-    app.run(host=ip, port=flask_port)
+    app.run(host="0.0.0.0", port=flask_port)

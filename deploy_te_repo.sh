@@ -71,4 +71,6 @@ echo "export IP='${REPO_IP}'" > /etc/te-swagger@${REPO_NAME}.conf
 echo "export PORT=${SWAGGER_PORT}" >> /etc/te-swagger@${REPO_NAME}.conf
 echo "export NGINX_ROOT=${NGINX_ROOT}" >> /etc/te-swagger@${REPO_NAME}.conf
 systemctl daemon-reload
-systemctl restart te-swagger@${REPO_NAME}.service && systemctl status te-swagger@${REPO_NAME}.service
+systemctl restart te-swagger@${REPO_NAME}.service
+sleep 3
+systemctl status te-swagger@${REPO_NAME}.service

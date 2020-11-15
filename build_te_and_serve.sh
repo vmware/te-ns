@@ -33,23 +33,24 @@
 
 set -e
 
-if [[ $# -ne 3 && $# -ne 4 ]] ; then
+if [[ $# -ne 5 && $# -ne 6 ]] ; then
     echo "Improper Input"
-    echo "$0 <REPO_NAME> <REPO_IP> <PATH TO TRAFFIC ENGINE> <SWAGGER_PORT>(optional -- default 4000)"
+    echo "$0 <REPO_PATH> <REPO_NAME> <REPO_IP> <PATH TO TRAFFIC ENGINE> <PASSWORD_OF_ROOT_USER> <SWAGGER_PORT>(optional -- default 4000)"
     exit 1
 fi
 
 GREEN='\033[0;32m'
 NC='\033[0m'
 USER=root
-PASSWORD=tens123
-REPO_NAME=$1
-TARGET=/usr/share/nginx/html/$1/
-IP=$2
-PATH_TO_TE=$3
+NGINX_ROOT=$1
+REPO_NAME=$2
+TARGET=$1/$2/
+IP=$3
+PATH_TO_TE=$4
+PASSWORD=$5
 
-if [[ $# -eq 4 ]] ; then
-    SWAGGER_PORT=$4
+if [[ $# -eq 6 ]] ; then
+    SWAGGER_PORT=$6
 else
     SWAGGER_PORT=4000
 fi
@@ -86,5 +87,6 @@ sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "ls -l ${TAR
 sshpass -p $PASSWORD scp -o "StrictHostKeyChecking no" $PATH_TO_TE/te/te-swagger* $USER@$IP:/etc/systemd/system/
 sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo \"export IP='${IP}'\" > /etc/te-swagger@${REPO_NAME}.conf"
 sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo \"export PORT='${SWAGGER_PORT}'\" >> /etc/te-swagger@${REPO_NAME}.conf"
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "echo \"export NGINX_ROOT='${NGINX_ROOT}'\" >> /etc/te-swagger@${REPO_NAME}.conf"
 sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "systemctl daemon-reload"
-sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "systemctl restart te-swagger@${REPO_NAME}.service && systemctl status te-swagger@${REPO_NAME}.service"
+sshpass -p $PASSWORD ssh -o "StrictHostKeyChecking no" -t $USER@$IP "systemctl restart te-swagger@${REPO_NAME}.service && sleep 3 && systemctl status te-swagger@${REPO_NAME}.service"
