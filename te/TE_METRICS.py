@@ -1649,7 +1649,7 @@ class TE_ZMQ:
 
     async def __recv_and_process(self):
         try:
-            host_ip_port = "tcp://" + self.__ZMQ['host'] + ":" + self.__ZMQ['port']
+            host_ip_port = "tcp://0.0.0.0:" + self.__ZMQ['port']
             self.__socket = await aiozmq.create_zmq_stream(zmq.PULL, bind=host_ip_port)
         except:
             self.__lgr.error(traceback.format_exc())

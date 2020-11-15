@@ -52,8 +52,8 @@ Traffic Engine functions with specific set of libraries and we are thankful to t
 ## How to get a fully fledged Traffic Engine (With Controller)
 * Traffic Engine has 2 parts to it. One is the Traffic Engine Controller and the other is Traffic Engine Datapath
 * The Controller acts as a single point of access which exposes various apis to start, stop, update and get metrics from the data path process
-* To get a sample run, please refer to tens_work_flow_demo.txt in home directory:
-       <work-space>/tens_workflow_demo.txt
+* To get a sample run, please refer to SAMPLE-RUN.md in home directory:
+       <work-space>/SAMPLE-RUN.md
 
 ## How to run a standalone datapath process
 * bin/te_dp [options]
