@@ -37,12 +37,7 @@
                 "produces": ["application/json"],
 		"responses" : {"200" :{"description" : "OK" }, "5XX":{"description" : "Bad Request,Internal Server Error!!!"}}
             }
-        } 	
-    },
-    "externalDocs" : {
-	"description" : "CONFLUENCE",
-	"url" : "tens_te_architecture.pdf"
+        }
     }
-
 }
 

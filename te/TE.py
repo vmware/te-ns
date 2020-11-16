@@ -199,7 +199,7 @@ class FlaskApplicationWrapper:
             self.__SCHEMA = {'te_dp_dict' : te_dp_dict_json_schema}
 
             #To clean all the pre-existing redis handles
-            self.TE_BROKER_HANDLE = Redis(te_daemon_ip,int(redis_port))
+            self.TE_BROKER_HANDLE = Redis("0.0.0.0", int(redis_port))
             self.TE_BROKER_HANDLE.flushall()
 
             #Task Details
@@ -1355,8 +1355,9 @@ class FlaskApplicationWrapper:
                     if processRunning != 0:
                         unableToStop[host_ip] = processRunning
                     else:
-                        del self.__tedp_config[host_ip]
-                        disconnectedHosts.append(host_ip)
+                        if host_ip in self.__tedp_config:
+                            del self.__tedp_config[host_ip]
+                            disconnectedHosts.append(host_ip)
                     break
 
             if(bool(unableToStop)):
@@ -1392,6 +1393,9 @@ class FlaskApplicationWrapper:
 
         te_dp_hosts = {}
         for host_ip in self.__connect_completed_tedps:
+            te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root'),
+                                    'password':self.__all_te_dp_dict_credentials[host_ip].get('password', '')}
+        for host_ip in self.__setup_completed_tedps:
             te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root'),
                                     'password':self.__all_te_dp_dict_credentials[host_ip].get('password', '')}
 
