@@ -92,7 +92,7 @@ class Logger:
 class DOCKER_INITIALIZER:
 
     def __init__(self, pathToDocker, ip, nginxPort, stat_collect_interval, stat_dump_interval, \
-        basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel):
+        basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel, my_ip, flask_port):
         self.pathToDocker = pathToDocker
         self.ip = ip
         self.nginxPort = nginxPort
@@ -103,6 +103,8 @@ class DOCKER_INITIALIZER:
         self.te_logpath = te_logpath
         self.te_loglevel = te_loglevel
         self.typeOfDocker = typeOfDocker
+        self.my_ip = my_ip
+        self.flask_port = flask_port
         self.__docker_load_reqd = False
         docker_type_map = {
             'TE' : {
@@ -118,9 +120,11 @@ class DOCKER_INITIALIZER:
                 'repo_name'           : 'tedp',
                 'run_cmd'             : "docker run --privileged --cap-add=SYS_PTRACE --security-opt " \
                                         "seccomp=unconfined -v /tmp/:/te_host/ -v $HOME:/te_root/ " \
-                                        "-v /var/run/netns:/var/run/netns " \
+                                        "-v $HOME/.ssh/:/root/.ssh/ -v /var/run/netns:/var/run/netns " \
+                                        "-e IPADDRESS=%s -e CTRL_IPADDRESS=%s -e CTRL_FLASK_PORT=%s " \
                                         "--ulimit core=9999999999 --name tedpv2.0 --net=host -d -it " \
-                                        "--tmpfs /tmp/ramcache:rw,size=104857600 tedp:v2.0 /sbin/init"
+                                        "--tmpfs /tmp/ramcache:rw,size=104857600 tedp:v2.0" %(
+                                            self.my_ip, self.ip, self.flask_port)
             }
         }
         self.docker_detials = docker_type_map[typeOfDocker]
@@ -178,7 +182,7 @@ class DOCKER_INITIALIZER:
             self.lgr.debug("pre-occupied ports in controller machine were %s" %(str(listOut)))
             self.lgr.debug("Chosen ports for services are %s " %(str(DICT_OF_SERVICES)))
             self.docker_detials['run_cmd'] = "docker run --privileged -d -it --name %s " \
-                                    "--net=host -v /tmp/:/te_host/ "\
+                                    "--net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/ "\
                                     "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s "\
                                     "-e REDIS_PORT=%s -e NGINX_PORT=%s -e POSTGRES_PORT=%s "\
                                     "-e ZMQ_PORT=%s -e STAT_COLLECT_INTERVAL=%d "\
@@ -294,7 +298,7 @@ class DOCKER_INITIALIZER:
                 self.__docker_load_reqd = True
                 self.lgr.debug("Unable to get image.id from remote")
             else:
-                ImageIdOfRemoteTar = (response.content.split(' ')[0]).strip()
+                ImageIdOfRemoteTar = (response.content.decode('utf-8').split(' ')[0]).strip()
                 (out, err) = self.__exec_cmd("docker images -q -a {}".format(
                     self.docker_detials['image_name']))
                 ImageIdOfLocal = out.replace("\n", "").strip()
@@ -319,7 +323,7 @@ class DOCKER_INITIALIZER:
                     self.lgr.error("Unable to calc checksum")
                     sys.exit(EXIT_CHECKSUM)
                 response = requests.get(checkSumLink, stream=True)
-                checkSumOfRemoteTar = response.content.split(' ')[0]
+                checkSumOfRemoteTar = response.content.decode("utf-8").split(' ')[0]
                 self.lgr.debug("checkSumOfRemoteTar %s" %checkSumOfRemoteTar)
                 if(checksum == checkSumOfRemoteTar):
                     self.lgr.debug("Matches")
@@ -402,8 +406,12 @@ def parse_args():
             help='Path to save the docker tar')
     parser.add_argument('-ip','--ip',type=str, required=True,
             help='IP to pull the tar file from')
+    parser.add_argument('-my_ip','--my_ip',type=str, required=False, default="127.0.0.1",
+            help='IP of the machine running this script')
     parser.add_argument('-p','--nginx_port',type=str, required=True,
             help='Nginx Port of remote machine serving the tar')
+    parser.add_argument('-fp','--flask_port',type=str, required=False, default="5000",
+            help='Flask port to talk to controller from data path')
     parser.add_argument('-b','--base_path',type=str, default="/",
             help='Path of the the Docker Image location')
     parser.add_argument('-t','--type_of_docker',type=str, required=True,
@@ -432,6 +440,8 @@ if __name__ == "__main__":
     stat_dump_interval = args.stat_dump_interval
     te_logpath = args.logpath
     te_loglevel = args.loglevel
+    my_ip = args.my_ip
+    flask_port = args.flask_port
 
     if typeOfDocker == "TE":
         te_controller_ip = args.host_ip
@@ -441,6 +451,7 @@ if __name__ == "__main__":
         te_controller_ip = None
 
     obj = DOCKER_INITIALIZER(pathToDocker, ip, nginxPort, stat_collect_interval, \
-        stat_dump_interval, basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel)
+        stat_dump_interval, basePath, typeOfDocker, te_controller_ip, te_logpath, te_loglevel,
+        my_ip, flask_port)
     obj.run()
 

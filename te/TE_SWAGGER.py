@@ -53,7 +53,7 @@ app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
 def setup_te():
     controller_ip = request.args['te_controller_ip']
     user = request.args['user']
-    password = request.args['passwd']
+    password = request.args.get('passwd', None)
 
     te_controller_obj= { 'host': controller_ip , 'user': user , 'passwd': password }
 
@@ -65,7 +65,10 @@ def setup_te():
     #ssh connection to the controller machine
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(controller_ip, username=user, password=password)
+    if password:
+        ssh.connect(controller_ip, username=user, password=password)
+    else:
+        ssh.connect(controller_ip, username=user)
 
     #check if python is installed in the controller machine, as it it required to run GET_AND_RUN_DOCKER_IMAGE.py file
     cmd = "which python"

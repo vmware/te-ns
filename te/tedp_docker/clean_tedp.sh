@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #**********************************************************************************************
 # Traffic Emulator for Network Services
 # Copyright 2020 VMware, Inc
@@ -29,11 +31,9 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-greenlet==0.4.15
-redis==3.1.0
-requests==2.21.0
-rq==0.13.0
-sysv-ipc==1.0.0
-urllib3==1.24.2
-paramiko
-scp
+ps aux | grep te_dp | grep -v grep | awk '{print $2}' | xargs --no-run-if-empty kill -9
+ls -d /opt/te/* | grep core | xargs rm -rf
+ls -d /tmp/ramcache/* | xargs rm -rf
+ls -d /tmp/TE%* | xargs rm -rf
+# Kill just the stats_collector which would force restart "rq worker"
+ps aux | grep te_stats_collector | grep -v grep | awk '{print $2}' | xargs --no-run-if-empty kill -9

@@ -54,3 +54,4 @@ aiozmq==0.7.1
 asyncio==3.4.3
 uvloop==0.13.0
 flask-swagger-ui==3.25.0
+scp

@@ -166,6 +166,9 @@ class TensTE():
         '''
         self.__te_controller['hostport'] = str(port)
 
+    def set_controller_credentials(self, user="root", passwd=None):
+        self.__te_controller['user'] = user
+        self.__te_controller['passwd'] = passwd
 
     def __url(self, path):
         if self.__te_controller.get('hostport',None) is not None:
@@ -232,7 +235,7 @@ class TensTE():
                             "zmq"      : "5555"}
         host = self.__te_controller['host']
         uname = self.__te_controller.get('user', 'root')
-        pwd = self.__te_controller.get('passwd', '')
+        pwd = self.__te_controller.get('passwd', None)
         self.TE_IMAGE_ID = None
 
         buildImages = {
@@ -394,7 +397,10 @@ class TensTE():
         logging.getLogger("paramiko").setLevel(logging.ERROR)
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(host, username=uname, password=pwd)
+        if pwd:
+            ssh.connect(host, username=uname, password=pwd)
+        else:
+            ssh.connect(host, username=uname)
 
         #Check if docker is installed (else install it)
         cmd = "docker -v"
@@ -458,7 +464,7 @@ class TensTE():
         status, message = __update_free_port()
         if(not(status)):
             return {'status':status, 'statusmessage':message}
-        cmd = "docker run --privileged -d -it --name %s --net=host -v /tmp/:/te_host/ "\
+        cmd = "docker run --privileged -d -it --name %s --net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/"\
                "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s -e REDIS_PORT=%s "\
                "-e NGINX_PORT=%s -e POSTGRES_PORT=%s -e ZMQ_PORT=%s "\
                "-e STAT_COLLECT_INTERVAL=%d -e STAT_DUMP_INTERVAL=%d "\
@@ -503,10 +509,13 @@ class TensTE():
 
         host = self.__te_controller['host']
         uname = self.__te_controller.get('user', 'root')
-        pwd = self.__te_controller.get('passwd', '')
+        pwd = self.__te_controller.get('passwd', None)
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(host, username=uname, password=pwd)
+        if pwd:
+            ssh.connect(host, username=uname, password=pwd)
+        else:
+            ssh.connect(host, username=uname)
 
         # SCPCLient takes a paramiko transport as an argument
         scp = SCPClient(ssh.get_transport())
@@ -645,12 +654,11 @@ class TensTE():
             te_dp_dict: dict, required
                 The TE_DP client credientials which includes:
                     host_ip : Keys to te_dp_dict (Client mgmt IP) whose values includes:
-                        user : User to the host_ip with passwordless docker privilege
-                        passwd : Password to the host_ip's above user
+            te_dp_dict's type is kept as disct for consistency purpose
         Example:
             te_dp_dict = {
-                '1.1.1.1' : {'passwd': '', 'user': 'root'},
-                '2.2.2.2' : {'passwd': '', 'user': 'root'}
+                '1.1.1.1' : {},
+                '2.2.2.2' : {}
             }
 
         Returns:
@@ -1675,8 +1683,7 @@ class TensTE():
             return "TE Controller flask port not known. Please set it using the call set_controller_flask_port(port)"
 
     @__retry_wrapper
-    def tech_support(self, te_dp_dict={}, scp_ip=None, scp_user='root', scp_passwd='', \
-        scp_path='/tmp', log_type="all", max_tolerable_delay=120):
+    def tech_support(self, te_dp_dict={}, log_type="all", max_tolerable_delay=120):
         """
         To get the logs to specified scp_ip with the given credentials
 
@@ -1684,13 +1691,6 @@ class TensTE():
             te_dp_dict: dict, default {}
                 If connect step is completed and if te_dp_dict is empty, logs are pulled from all clients
                 Else if connect step is yet to be completed only setup_logs can be got from passed te_dp_dict
-            scp_ip: str, default TE Controller IP
-                IP must be ssh-able from the TE_DP Clients and TE Controller
-                If no IP is given all logs will be scp-ed to the TE Controller
-            scp_user/scp_passwd: str/str, default TE Controller IP and password
-                Credentials of scp user and password
-            scp_path: str, default '/tmp'
-                The paths are at host level and not at container level
             log_type: str, default 'all'
                 Types of logs to scp
                     > setup: Includes controller.log and download_docker.log
@@ -1704,13 +1704,13 @@ class TensTE():
             dict, status and statusmessage describing the stats of completion of SCP
         """
         url = self.__url('tech_support')
+        scp_user = self.__te_controller.get('user', 'root')
+        scp_passwd = self.__te_controller.get('passwd', None)
+
         if url is not None:
-            if scp_ip is None:
-                scp_user = self.__te_controller.get('user', 'root')
-                scp_passwd = self.__te_controller.get('passwd', '')
-            resp = requests.post(url, json={'te_dp_dict':te_dp_dict, 'scp_ip':scp_ip, \
-                'scp_user':scp_user, 'scp_passwd':scp_passwd, 'scp_path':scp_path, \
-                'log_type':log_type, 'max_tolerable_delay':max_tolerable_delay})
+            resp = requests.post(url, json={'te_dp_dict':te_dp_dict,
+                'log_type':log_type, 'max_tolerable_delay':max_tolerable_delay,
+                'scp_user':scp_user, 'scp_passwd':scp_passwd})
             if resp.status_code is (200, 201):
                 raise Exception('POST tech_support/ {}'.format(resp.status_code))
             Jdata = resp.json()
