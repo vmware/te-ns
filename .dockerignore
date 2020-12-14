@@ -1,0 +1,11 @@
+*
+!te/tedp_docker/
+!te/TE_UTILS.py
+!te/CONNECTOR.py
+!te/RQ_CONNECTOR.py
+!te/TE_UTILS.py
+!te/TE_WORK.py
+!te_dp/src
+!te_dp/bin
+!te_dp/Makefile
+!te_dp/test

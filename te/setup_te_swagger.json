@@ -30,7 +30,6 @@
                         "name" : "passwd",
                         "description" : "TE controller password",
                         "in" : "query",
-			"required" : true,
                         "type": "string"
                     }
 		],

@@ -82,7 +82,9 @@ class Singleton(type):
 
 TE_API = {
     'setup_tedp' : 'Brings up TE data path containers',
-    'connect' : 'Connects TE Controller with datapath containers over redis',
+    'connect' : 'Adds datapath containers to the known list of TE Controller that way authentication can happen',
+    'establish_rq' : 'To be called by datapath process to let controller know the rq in its end is up',
+    'get_rq_details' : 'To be called by datapath process to get details to establish rq connection',
     'start' : 'Starts traffic on the data path containers based on the input knobs',
     'stop' : 'Stops the traffic',
     'get_states' : 'To get the current variable states (Developer Debugging)',
@@ -190,7 +192,7 @@ class FlaskApplicationWrapper:
             }
 
             #Any call that flows to tedp using core 0 must have an entry here
-            self.__MGMT_CALLS = ["GET_ACTIVE_TEDP", "UPDATE_DNS", "RESET_DNS", "EXECUTE_CMD", "TECH_SUPPORT"]
+            self.__MGMT_CALLS = ["GET_ACTIVE_TEDP", "UPDATE_DNS", "RESET_DNS", "EXECUTE_CMD", "TECH_SUPPORT", "CLEAN_TEDP"]
 
             #PERMITTED STATES OF TE-FSM
             self.__CURRENT_STATE = self.__TE_STATE['INIT']
@@ -209,6 +211,9 @@ class FlaskApplicationWrapper:
             self.__connect_completed_tedps = set()
             self.__all_te_dp_dict_credentials = {}
             self.__tedp_config = {}
+
+            # Lock to avoid concurrent access of common DS when DPs are trying to connect to TE Controller
+            self.__connect_lock = Lock()
 
             #PostgresDB is started always
             postgres_port = self.__te_controller_obj.get_postgres_port()
@@ -272,7 +277,8 @@ class FlaskApplicationWrapper:
                         return validState
 
                     #CHECKING IF THERE IS NO DOUBLE RUN
-                    if(self.__IS_RUNNING[typeOfTask]):
+                    if(self.__IS_RUNNING[typeOfTask] and \
+                            typeOfTask != "ESTABLISH_RQ" and typeOfTask !="GET_RQ_DETAILS"):
                         self.__IS_RUNNING[typeOfTask] = False
                         return self.__failure('Previous call of %s not exited' %typeOfTask)
                     self.__IS_RUNNING[typeOfTask] = True
@@ -361,7 +367,7 @@ class FlaskApplicationWrapper:
         Args:
             client: The PSSH client object
             te_dp_hosts: A dict of tedp_host which has the mapping from host to user and password (It is used to make a new client if there is an exception raised) cmd=Same Command that has to be executed on all the clients
-            host_args=Dictionary of command if each client take something different. (Ex: CONNECTOR.py need different rqueue that will be passed to it). This was initially a list in your implementation, now has been changed to dict, so that retries on the particular client alone will be possible.
+            host_args=Dictionary of command if each client take something different. (Ex: GET_AND_RUN_DOCKER_IMAGE.py need different host ip that will be passed to it). Retries on the particular client alone will be possible.
             max_retries=Defaults to 10
             xxxxxxxxx NOTE: cmd and host_args must not be passed in the same call xxxxxxxxx
 
@@ -744,8 +750,10 @@ class FlaskApplicationWrapper:
 
         te_dp_hosts = {}
         for host_ip, details in te_dp_dict.items():
-            te_dp_hosts[host_ip] = {'user': details.get('user','root'),
-                                    'password':details.get('passwd', '')}
+            te_dp_hosts[host_ip] = {'user': details.get('user','root')}
+            passwd = details.get('passwd', None)
+            if passwd:
+                te_dp_hosts[host_ip]['password'] = password
 
         client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
         status, msg, result = self.__get_cpu_count_tedps(te_dp_hosts, client)
@@ -986,19 +994,17 @@ class FlaskApplicationWrapper:
             numberOfCallsMade = 0
             enqueuedHosts = []
             resultDict = {}
-            bin_src_flag = True
 
             for host in tedp_host:
                 argsPassed = {'my_ip':host, 'remote_ip':scp_ip, 'remote_user':scp_user, \
                         'remote_pwd':scp_passwd, 'remote_path':scp_path, \
-                        'type_of_logs':type_of_logs,'bin_src_flag':bin_src_flag}
+                        'type_of_logs':type_of_logs}
                 self.lgr.debug("Passing args to tech_support=%s" %str(argsPassed))
                 resultDict[host] = \
                     self.__tedp_config[host].tech_support_helper(tech_support, argsPassed)
 
                 #Add to Assigned TASK_DETAILS
                 self.__TASK_DETAILS[CURRENT_TASK].append(host)
-                bin_src_flag = False
 
             self.lgr.debug("result of tech_support tedp %s" %(str(resultDict)))
 
@@ -1006,54 +1012,28 @@ class FlaskApplicationWrapper:
             if status:
                 return True, "SCP-ed files", result
             #RQ Failure / Incomplete task / bad code
-            return False, "No Files SCP-ed", result
+            return False, "Errors during SCP of tech support", result
         except:
             return False, "Exception Occured:", traceback.format_exc()
 
     @__api_state_decorator("TECH_SUPPORT")
     def tech_support_api(self, jsonContent):
-        self.lgr.debug("tech_support_api Called")
-        scp_ip = convert(jsonContent['scp_ip'])
+        self.lgr.debug("tech_support_api Called jsonContent={}".format(jsonContent))
         te_dp_dict = convert(jsonContent['te_dp_dict'])
-        scp_user = convert(jsonContent['scp_user'])
-        scp_passwd = convert(jsonContent['scp_passwd'])
-        scp_path = convert(jsonContent['scp_path'])
         log_type = convert(jsonContent['log_type'])
         max_tolerable_delay = convert(jsonContent.get('max_tolerable_delay', 120))
+        scp_user = convert(jsonContent.get("scp_user", "root"))
+        scp_passwd = convert(jsonContent.get("scp_passwd", None))
 
-        if scp_ip is None:
-            scp_ip = self.__te_controller_obj.get_daemon_ip()
+        scp_ip = self.__te_controller_obj.get_daemon_ip()
+        scp_path = "/tmp"
 
         if(log_type!="all" and log_type!="setup" and log_type!="process" and log_type!="core"):
             self.__failure("Only accepted types of log_types are all, setup, process or core")
 
         #If connect step is yet to be completed
         if(not(bool(self.__connect_completed_tedps))):
-            if(not(bool(te_dp_dict))):
-                return self.__failure("Connect step incomplete and no te_dp dict is passed to get logs from")
-            self.lgr.debug("Using parallel_ssh to get the tech_support")
-            te_dp_hosts = OrderedDict()
-            host_specific_cmd = OrderedDict()
-            for host_ip in te_dp_dict:
-                te_dp_hosts[host_ip] = {'user': te_dp_dict[host_ip].get('user','root'),
-                                        'password':te_dp_dict[host_ip].get('passwd', '')}
-            client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
-            for host in te_dp_hosts:
-                path_for_host = os.path.join(scp_path, "te_%s_logs" %host)
-                host_specific_cmd[host] = \
-                    "sshpass -p %s ssh -o 'StrictHostKeyChecking no' -t %s@%s 'rm -rf %s; mkdir -p %s/setup_logs';" \
-                    " sshpass -p %s scp -o 'StrictHostKeyChecking no' ~/connector.log " \
-                    "~/download_docker.log %s@%s:%s/setup_logs" \
-                    %(scp_passwd, scp_user, scp_ip, path_for_host, path_for_host,\
-                    scp_passwd, scp_user, scp_ip, path_for_host)
-
-            problematicHost = self.__run_command_and_validate_output(client=client, \
-                te_dp_hosts=te_dp_hosts, host_args=host_specific_cmd, validate_exit_codes=False)
-
-            if(bool(problematicHost)):
-                return self.__failure(problematicHost)
-
-            return self.__success("SCPed setup_logs to %s of %s" %(scp_path, scp_ip))
+            return self.__failure("No tedps connected to collect logs")
 
         else:
             self.lgr.debug("Using RQs to get the tech_support")
@@ -1065,22 +1045,27 @@ class FlaskApplicationWrapper:
                 scp_path, log_type, max_tolerable_delay)
             if status:
                 date_time = str(datetime.now()).replace(' ','-').replace(':','-')
-                tar_file = "techsupportlogs-{}.tar.gz".format(date_time)
-                scp_path = os.path.join('/',scp_path) 
-                interested_files = "te_*_logs bin_src_file_dir"
-                cmd = "cd {} && tar -zcvf {} {} && rm -rf {}; ls {}".format(scp_path, tar_file, interested_files, interested_files, tar_file)
-                ssh = paramiko.SSHClient()
-                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                ssh.connect(scp_ip, username=scp_user, password=scp_passwd,timeout=10)
-                stdin, stdout, stderr = ssh.exec_command(cmd)
-                output = stdout.readlines()
-                if(bool(output)):
-                    if(output[-1].replace('\n','')==tar_file):
-                        return self.__success(result)
+                tar_file = "/te_host/techsupportlogs-{}.tar.gz".format(date_time)
+                host_tar_file = "/tmp/techsupportlogs-{}.tar.gz".format(date_time)
+                interested_files = "te_*_logs.tar.gz"
+
+                cmd = "cd /te_host/ && tar -zcvf {} {} /tmp/ && rm -rf {}".format(
+                        tar_file, interested_files, interested_files)
+                self.lgr.info("Executing '{}'".format(cmd))
+                os.system(cmd)
+
+                cmd = "ls -d {}".format(tar_file)
+                (out, err) = self.__execute_command(cmd)
+                self.lgr.info("Executing '{}'".format(cmd))
+                self.lgr.info("Out={} Err={}".format(out, err))
+
+                if(bool(out)):
+                    if(out.replace('\n','') == tar_file):
+                        return self.__success("Tech support file generated at {}".format(host_tar_file))
                     else:
-                        return self.__success("Tar ball not generated but tech support logs scp-ed successfuly")
+                        return self.__success("Tar ball not generated but tech support logs scp-ed successfuly. Check /tmp/te_*_logs.tar.gz in controller host")
                 else:
-                    return self.__failure({msg:"Unable to scp techsupport logs"})
+                    return self.__failure({msg:"Unable to scp techsupport logs from data path. Please check for techsupport tar in /tmp/te_*_logs in datapath machines"})
             return self.__failure({msg:result})
 
     ################################# SETUP TEDP API ####################################
@@ -1115,10 +1100,14 @@ class FlaskApplicationWrapper:
         self.lgr.debug("SCP-ed /app/GET_AND_RUN_DOCKER_IMAGE.py to TEDP containers")
 
         #Run GET_AND_RUN_DOCKER_IMAGE.py to all the hosts'i home dir
-        command = "python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -ip %s -p %s -t TE_DP" \
-            %(self.__te_controller_obj.get_daemon_ip(), self.__te_controller_obj.get_nginx_port())
+        host_command = OrderedDict()
+        for host in te_dp_hosts.keys():
+            host_command[host] = "python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -ip %s -p %s -t TE_DP -my_ip %s -fp %s" \
+            %(self.__te_controller_obj.get_daemon_ip(), self.__te_controller_obj.get_nginx_port(),
+                host, self.__te_controller_obj.get_flask_port())
+
         problematicHost = self.__run_command_and_validate_output(client=client, \
-            te_dp_hosts=te_dp_hosts, cmd=command, cleanExitCode=CLEAN_EXIT,\
+            te_dp_hosts=te_dp_hosts, host_args=host_command, cleanExitCode=CLEAN_EXIT,\
             possibleExitCodesDict=EXIT_STATUS)
         if problematicHost != {}:
             self.lgr.error("Unable to run GET_AND_RUN_DOCKER_IMAGE.py to TEDP containers. %s" \
@@ -1159,12 +1148,12 @@ class FlaskApplicationWrapper:
             if user is None:
                 invalid_input[host_ip] = "user cannot be None"
                 continue
-            passwd = value.get('passwd',None)
-            if passwd is None:
-                invalid_input[host_ip] = "passwd cannot be None"
-                continue
+            # Empty password means authenticate from default certificate from /root/.ssh/
+            passwd = value.get('passwd', None)
 
-            te_dp_hosts[host_ip] = {'user': user, 'password':passwd}
+            te_dp_hosts[host_ip] = {'user': user}
+            if passwd:
+                te_dp_hosts[host_ip]['password'] = passwd
             self.__all_te_dp_dict_credentials[host_ip] = te_dp_hosts[host_ip]
 
         if(bool(invalid_input)):
@@ -1192,79 +1181,52 @@ class FlaskApplicationWrapper:
                         self.__setup_completed_tedps.add(tedp_host)
             return self.__failure({msg:result})
 
+    ################################# RQ APIs ####################################
+
+    @__api_state_decorator("GET_RQ_DETAILS")
+    def get_rq_details_api(self, jsonContent):
+        self.lgr.debug("get_rq_details_api Called")
+
+        isRequestValid = self.__checkForRequiredArgument(jsonContent, ['ip','cpus'])
+        if isRequestValid is not None:
+            return isRequestValid
+
+        if jsonContent['ip'] not in self.__setup_completed_tedps:
+            return self.__failure("Unauthenticated. Use connect to authenticate {}".format(jsonContent['ip']))
+
+        if jsonContent['ip'] not in self.__tedp_config.keys():
+            self.__connect_lock.acquire()
+            self.__tedp_config[jsonContent['ip']] = TE_DP_CONFIG(jsonContent['ip'], jsonContent['cpus'], \
+                self.TE_BROKER_HANDLE, self.lgr, self.__te_postgres_object)
+            self.__connect_lock.release()
+
+        result = {
+            "broker" : self.__te_app.config['BROKER_URL'],
+            "stat_collect_interval" : self.__stat_collect_interval,
+            "zmq" : self.__te_controller_obj.get_zmq_port(),
+            "queue_csv" : 'TE?' + str(self.__tedp_config[jsonContent['ip']].get_queue_names())
+        }
+
+        return self.__success(result)
+
+    @__api_state_decorator("ESTABLISH_RQ")
+    def establish_rq_api(self, jsonContent):
+        self.lgr.debug("establish_rq_api Called")
+
+        isRequestValid = self.__checkForRequiredArgument(jsonContent, ['ip'])
+        if isRequestValid is not None:
+            return isRequestValid
+
+        if jsonContent['ip'] not in self.__setup_completed_tedps:
+            self.lgr.debug("unauthorised {}".format(jsonContent['ip']))
+            return self.__failure("Unauthenticated. Use connect to authenticate {}".format(jsonContent['ip']))
+
+        self.__connect_lock.acquire()
+        self.__connect_completed_tedps.add(jsonContent['ip'])
+        self.__connect_lock.release()
+        return self.__success("Authenticated {}".format(jsonContent['ip']))
+
     ################################# CONNECT API ####################################
-
-    def __connect_tedps(self, te_dp_hosts, client):
-        try:
-            def __del(host_ip_list):
-                for host_ip in host_ip_list:
-                    try:
-                        del self.__tedp_config[host_ip]
-                    except:
-                        pass
-
-            EXIT_CODES = {
-                10 : "Unable to dummp configs",
-                11 : "Connect R-Queues started lesser than expected",
-                12 : "Docker container is not up. Please do a setup_tedp()",
-                13 : "Unable to start stat_collector daemon",
-                14 : "Unable to find python-redis package"
-            }
-            CLEAN_EXIT = 200
-
-            self.lgr.debug("__connect_tedps Called")
-            broker = deepcopy(self.__te_app.config['BROKER_URL'])
-            banckend = deepcopy(self.__te_app.config['RESULT_BACKEND'])
-            host_command = OrderedDict()
-
-            #Find the resource of CPUs
-            output, problematicHost = self.__run_command_and_validate_output(client=client, \
-                te_dp_hosts=te_dp_hosts, cmd="nproc", getStdOut=True)
-            if(bool(problematicHost)):
-                return False, "Improper Exit code", problematicHost
-            cpu_result = {}
-            for host, linesOfOutput in output.items():
-                for line in linesOfOutput:
-                    cpus = int(line)
-                    if cpus > 1:
-                        te_dp_hosts[host]['cpus'] = cpus
-                    else:
-                        cpu_result[host] = {'available-cpus': cpus, 'minimum-number-of-cpus-required' : 2}
-                    break
-            if(bool(cpu_result)):
-                return False, "Resource Error", cpu_result
-
-            #Run CONNECTOR.py
-
-            greenlets = client.scp_send('/app/CONNECTOR.py', 'CONNECTOR.py')
-            joinall(greenlets, raise_error=True)
-            zmq_port = self.__te_controller_obj.get_zmq_port()
-            for host, details in te_dp_hosts.items():
-                self.__tedp_config[host] = TE_DP_CONFIG(host, details['user'], details['password'],\
-                    details['cpus'], self.TE_BROKER_HANDLE, self.lgr, self.__te_postgres_object)
-                queue_csv = 'TE?' + str(self.__tedp_config[host].get_queue_names())
-                self.lgr.debug("%s queue_csv=%s" %(host, queue_csv))
-                command = "python ~/CONNECTOR.py -b " + broker + \
-                    " -l "+ str(self.__te_controller_obj.get_loglevel()) + \
-                    " -s " + str(self.__stat_collect_interval) + \
-                    " -ip " + host + \
-                    " -z " + zmq_port + \
-                    " -te " + self.__te_controller_obj.get_daemon_ip() + \
-                    " -w /opt/te/ -Q \"" + str(queue_csv)+'\"'
-                host_command[host]=command
-            problematicHost = self.__run_command_and_validate_output(client=client, \
-                te_dp_hosts=te_dp_hosts, host_args=host_command, cleanExitCode=CLEAN_EXIT, \
-                possibleExitCodesDict=EXIT_CODES)
-            if(bool(problematicHost)):
-                __del(problematicHost.keys())
-                return False, "Improper Exit codes", problematicHost
-            else:
-                return True, "Connected to Hosts", problematicHost
-        except:
-            self.lgr.error("Exception in connect_tedps %s" %traceback.format_exc())
-            __del(te_dp_hosts.keys())
-            return False, "Exception in connect_tedps", traceback.format_exc()
-
 
     @__api_state_decorator("CONNECT")
     def connect_api(self, jsonContent):
@@ -1279,103 +1241,36 @@ class FlaskApplicationWrapper:
         if not isinstance(te_dp_dict, dict):
             return self.__failure("te_dp_dict must be a dict")
 
-        te_dp_hosts = OrderedDict()
-        tedps_to_connect = set(te_dp_dict.keys())
-        host_ips_to_connect = tedps_to_connect - self.__connect_completed_tedps
-
-        invalid_input = {}
-        for host_ip in host_ips_to_connect:
-
-            value = te_dp_dict[host_ip]
-            if value is None:
-                invalid_input[host_ip] = "Value cannot be None"
-                continue
-            user = value.get('user',None)
-            if user is None:
-                invalid_input[host_ip] = "user cannot be None"
-                continue
-            passwd = value.get('passwd',None)
-            if passwd is None:
-                invalid_input[host_ip] = "passwd cannot be None"
-                continue
-            te_dp_hosts[host_ip] = {'user': user, 'password':passwd}
-            self.__all_te_dp_dict_credentials[host_ip] = te_dp_hosts[host_ip]
-
-        if(bool(invalid_input)):
-            return self.__failure(invalid_input)
-
-        if(not(bool(te_dp_hosts))):
+        if not te_dp_dict:
             return self.__failure({"No tedps to connect. Already connected tedps": \
                 list(self.__connect_completed_tedps)})
 
-        client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
-        status, message, result = self.__connect_tedps(te_dp_hosts, client)
-        del client
+        for host in te_dp_dict.keys():
+            self.__setup_completed_tedps.add(host)
 
-        if status:
-            self.__connect_completed_tedps.update(host_ips_to_connect)
-            #Change of collect interval has to be reflected at metrics object to accurate rate computation
-            self.__te_postgres_object.alter_stat_collect_interval(self.__stat_collect_interval)
-            return self.__success('Connected all TEs and TEDPs')
-        else:
-            #If Failed result.keys() are the only failed guys, rest all are connected
-            self.__connect_completed_tedps.update(
-                set(host_ips_to_connect) - set(result.keys())
-            )
-            return self.__failure({message:result})
+        return self.__success("Initiated objects for TEDPs={} to connect".format(list(te_dp_dict.keys())))
 
     ################################# CLEAN API ####################################
 
-    def __disconnect_tedps(self, te_dp_hosts, client, remove_containers=False):
+    def __disconnect_tedps(self, te_dp_hosts, client):
         try:
-            cmd = "docker exec tedpv2.0 bash -c '(kill_proc=$(pgrep te_dp) && kill -9 $kill_proc)'; \
-            docker exec tedpv2.0 bash -c '(kill_proc=$(pgrep rq) && kill -9 $kill_proc)'; \
-            docker exec tedpv2.0 bash -c 'ipcrm --all=msg'; \
-            docker exec tedpv2.0 bash -c 'ls -d /tmp/* | grep -v ramcache | xargs rm -rf'; \
-            docker exec tedpv2.0 bash -c 'ls -d /opt/te/* | grep core | xargs rm -rf'; \
-            docker exec tedpv2.0 bash -c 'rm -rf /te_host/*'; \
-            docker exec tedpv2.0 bash -c 'ps aux | grep -e te_dp -e rq | grep -v grep | wc -l'; \
-            docker exec tedpv2.0 bash -c 'service te_stats_collector stop'; \
-            exit 0"
-
-            (output, problematicHost) = self.__run_command_and_validate_output(client=client, \
-                te_dp_hosts=te_dp_hosts, cmd=cmd, getStdOut=True)
+            cmd = "docker rm -f tedpv2.0 || true"
+            problematicHost = self.__run_command_and_validate_output(client=client, \
+                te_dp_hosts=te_dp_hosts, cmd=cmd)
             if(bool(problematicHost)):
                 return False, "Unable to disconnect from hosts", problematicHost
-
-            unableToStop = {}
-            disconnectedHosts = []
-            for host_ip, linesOfOutput in output.items():
-                for line in linesOfOutput:
-                    try:
-                        processRunning = int(line)
-                    except:
-                        disconnectedHosts.append(host_ip)
-                        break
-                    if processRunning != 0:
-                        unableToStop[host_ip] = processRunning
-                    else:
-                        if host_ip in self.__tedp_config:
-                            del self.__tedp_config[host_ip]
-                            disconnectedHosts.append(host_ip)
-                    break
-
-            if(bool(unableToStop)):
-                return False, "Unable to stop running processes in hosts", unableToStop
-
-            if remove_containers:
-                cmd = "docker rm -f tedpv2.0 || true"
-                problematicHost = self.__run_command_and_validate_output(client=client, \
-                    te_dp_hosts=te_dp_hosts, cmd=cmd)
-                if(bool(problematicHost)):
-                    return False, "Unable to disconnect from hosts", problematicHost
-                return True, "Disconnected and removed containers in hosts", disconnectedHosts
-            else:
-                return True, "Disconnected containers in hosts", disconnectedHosts
-
+            return True, "Removed containers in hosts", te_dp_hosts
         except:
             return False, "Exception Occured", traceback.format_exc()
 
+    def __reinit_tedp_config(self):
+        for host in self.__tedp_config.keys():
+            obj = self.__tedp_config[host]
+            cpus = obj.get_cpu_count()
+            new_obj = TE_DP_CONFIG(host, cpus, self.TE_BROKER_HANDLE, \
+                    self.lgr, self.__te_postgres_object)
+            del obj
+            self.__tedp_config[host] = new_obj
 
     @__api_state_decorator("CLEAN")
     def clean_api(self, jsonContent):
@@ -1391,20 +1286,49 @@ class FlaskApplicationWrapper:
         elif remove_containers == "False" or remove_containers == "false":
             remove_containers = False
 
-        te_dp_hosts = {}
-        for host_ip in self.__connect_completed_tedps:
-            te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root'),
-                                    'password':self.__all_te_dp_dict_credentials[host_ip].get('password', '')}
-        for host_ip in self.__setup_completed_tedps:
-            te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root'),
-                                    'password':self.__all_te_dp_dict_credentials[host_ip].get('password', '')}
+        if remove_containers:
+            # If container needs to be removed go via ssh
+            te_dp_hosts = {}
+            te_dp_in_no_access = set()
+            for host_ip in self.__connect_completed_tedps:
+                if host_ip not in self.__all_te_dp_dict_credentials:
+                    te_dp_in_no_access.add(host_ip)
+                    continue
+                te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root')}
+                passwd = self.__all_te_dp_dict_credentials[host_ip].get('password', None)
+                if passwd:
+                    te_dp_hosts[host_ip]['password'] = passwd
+            for host_ip in self.__setup_completed_tedps:
+                if host_ip not in self.__all_te_dp_dict_credentials:
+                    te_dp_in_no_access.add(host_ip)
+                    continue
+                te_dp_hosts[host_ip] = {'user': self.__all_te_dp_dict_credentials[host_ip].get('user','root')}
+                passwd = self.__all_te_dp_dict_credentials[host_ip].get('password', None)
+                if passwd:
+                    te_dp_hosts[host_ip]['password'] = passwd
 
-        if(not(bool(te_dp_hosts))):
-            return self.__failure("No connected te dps to disconnect")
+            self.__setup_completed_tedps = self.__setup_completed_tedps.difference(te_dp_in_no_access)
+            self.__connect_completed_tedps = self.__connect_completed_tedps.difference(te_dp_in_no_access)
 
-        client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
-        status, msg, result = self.__disconnect_tedps(te_dp_hosts, client, remove_containers)
-        del client
+            if(not(bool(te_dp_hosts))):
+                return self.__failure("No connected te dps to disconnect")
+
+            client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
+            status, msg, result = self.__disconnect_tedps(te_dp_hosts, client)
+            del client
+
+            if (status and te_dp_in_no_access):
+                result = {
+                    msg : result,
+                    "tedp in no access. Needs manual clean up using `docker rm -f tedpv2.0`" : list(te_dp_in_no_access)
+                }
+
+        else:
+            # Go via rq to clean up the tedp process and to kill and respawn rq
+            if self.__setup_completed_tedps:
+                cmd = "nohup /opt/te/clean_tedp.sh &"
+                status, msg, result = self.__run_mgmt_command(list(self.__setup_completed_tedps),
+                        global_cmd=cmd, task="CLEAN_TEDP")
 
         if status:
             self.__connect_completed_tedps.clear()
@@ -1417,6 +1341,8 @@ class FlaskApplicationWrapper:
             self.__te_controller_obj.unset_client_cert_bundle()
             self.__CURRENT_STATE = self.__TE_STATE["INIT"]
             self.TE_BROKER_HANDLE.flushall()
+            self.__TASK_DETAILS = defaultdict(list)
+            self.__reinit_tedp_config()
             if(self.__te_postgres_object.clear_tables()):
                 return self.__success(result)
             else:

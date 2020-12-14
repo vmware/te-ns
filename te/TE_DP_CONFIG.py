@@ -38,7 +38,7 @@ from copy import copy
 class TE_DP_CONFIG:
 
     ######################## BASIC FUNCTION CALLS ########################
-    def __init__(self, host_ip, uname, passwd, cpu_count, TEbrokerHandle, lgr, te_metrics_object):
+    def __init__(self, host_ip, cpu_count, TEbrokerHandle, lgr, te_metrics_object):
 
         self.lgr = lgr
 
@@ -55,13 +55,12 @@ class TE_DP_CONFIG:
                                             "UPDATE"           : self.__result_evaluator_update_tedp,
                                             "GET_ACTIVE_TEDP"  : self.__result_evaluator_get_active_tedp,
                                             "RESET_DNS"        : self.__result_evaluator_default,
+                                            "CLEAN_TEDP"       : self.__result_evaluator_default,
                                             "UPDATE_DNS"       : self.__result_evaluator_default,
                                             "EXECUTE_CMD"      : self.__result_evaluator_default,
                                             "TECH_SUPPORT"     : self.__result_evaluator_tech_support}
 
-            self.__credentials          = { 'uname':uname,
-                                            'passwd':passwd,
-                                            'host_ip':host_ip }
+            self.__host_ip              = host_ip
             self.__cpu                  = { 'count':cpu_count,
                                             'free_cpu_list':cpuList,
                                             'usedup_cpu_list':[],
@@ -84,10 +83,14 @@ class TE_DP_CONFIG:
                                                          'session_config_tag'   : None,
                                                          'pid'                  : None }
 
-            self.lgr.debug("TE_DP_CONFIG INIT Success! host_ip=%s" %self.__credentials['host_ip'])
+            self.lgr.debug("TE_DP_CONFIG INIT Success! host_ip=%s" %self.__host_ip)
 
         except:
             self.lgr.error("Error in __init__ of TE_DP_CONFIG: %s" %traceback.format_exc())
+
+
+    def get_cpu_count(self):
+        return self.__cpu["count"]
 
     def __init_error_queue_list(self):
         self.__queue_task_info = {}
@@ -103,26 +106,26 @@ class TE_DP_CONFIG:
             self.__queue_task_info[key]['FAILED']=[]
             self.__queue_task_info[key]['STARTED']=[]
 
-        self.lgr.debug("error_queue_list INIT Success in host_ip=%s" %self.__credentials['host_ip'])
+        self.lgr.debug("error_queue_list INIT Success in host_ip=%s" %self.__host_ip)
 
     def __makeQueue(self, cpu, TEbrokerHandle):
-        queue_name = str("TE%")+self.__credentials['host_ip']+str("%")+str(cpu)+str("_QUEUE")
-        self.lgr.debug("Making queue for the host=%s cpu=%d q_name=%s" %(self.__credentials['host_ip'], cpu, queue_name))
+        queue_name = str("TE%")+self.__host_ip+str("%")+str(cpu)+str("_QUEUE")
+        self.lgr.debug("Making queue for the host=%s cpu=%d q_name=%s" %(self.__host_ip, cpu, queue_name))
         return rqQueue(queue_name, connection=TEbrokerHandle, default_timeout=180)
 
     def __del__(self):
-        del self.__credentials['host_ip']
+        del self.__host_ip
         del self.__STATES
-        del self.__credentials
+        del self.__host_ip
         del self.__cpu
         del self.__queues
         del self.__cpu_to_queue_mapping
         del self.__cpu_to_tedp_mapping
         del self.__task_mapping
-        self.lgr.debug("Deleted all object references in host_ip=%s" %self.__credentials['host_ip'])
+        self.lgr.debug("Deleted all object references in host_ip=%s" %self.__host_ip)
 
     def getStates(self):
-        return {'basic': self.__credentials, 'cpu': self.__cpu, '__cpu_to_tedp_mapping' : self.__cpu_to_tedp_mapping}
+        return {'host_ip': self.__host_ip, 'cpu': self.__cpu, '__cpu_to_tedp_mapping' : self.__cpu_to_tedp_mapping}
 
     ########################### GET AND SET FUNCTION CALLS ########################
     def get_queue_names(self):
@@ -147,7 +150,7 @@ class TE_DP_CONFIG:
             if pid is not None and details.get('state', -1) == self.__STATES["START"]:
                 listOfPids.append(pid)
         #A small Change in debug (Delete the comment later)
-        self.lgr.debug("List of pid running tedps is %s in host_ip=%s" %(str(listOfPids), self.__credentials['host_ip']) )
+        self.lgr.debug("List of pid running tedps is %s in host_ip=%s" %(str(listOfPids), self.__host_ip) )
         return listOfPids
 
     def get_pid_of_running_profiles(self, profile_tags_list):
@@ -157,7 +160,7 @@ class TE_DP_CONFIG:
                 pid = details.get('pid',None)
                 if pid is not None and details.get('state', -1) == self.__STATES["START"]:
                     listOfPids.append(pid)
-        self.lgr.debug("List of pid running tedps of profile=%s is %s in host=%s" %(profile_tags_list, str(listOfPids), self.__credentials['host_ip']))
+        self.lgr.debug("List of pid running tedps of profile=%s is %s in host=%s" %(profile_tags_list, str(listOfPids), self.__host_ip))
         return listOfPids
 
     def __get_cpu_running_pids(self, listOfPids):
@@ -168,7 +171,7 @@ class TE_DP_CONFIG:
                 pid_to_cpu[pid] = cpu
                 listOfPids.remove(pid)
         if(not(bool(listOfPids))):
-            self.lgr.debug("pid_to_cpu mapping is %s in host_ip=%s" %(str(pid_to_cpu), self.__credentials['host_ip']))
+            self.lgr.debug("pid_to_cpu mapping is %s in host_ip=%s" %(str(pid_to_cpu), self.__host_ip))
             return pid_to_cpu
         else:
             self.lgr.error("Unable to get cpu associated with pids=%s" %(str(listOfPids)))
@@ -217,16 +220,16 @@ class TE_DP_CONFIG:
 
             self.lgr.debug("Assigning Cpus for %s: assignedCPU=%d \
             instance_profile_tag=%s resource_config_tag=%s session_config_tag=%s cpus=%s" \
-            %(self.__credentials['host_ip'], assignedCPU, instance_profile_tag, resource_config_tag, session_config_tag, str(self.__cpu)))
+            %(self.__host_ip, assignedCPU, instance_profile_tag, resource_config_tag, session_config_tag, str(self.__cpu)))
             return assignedCPU
         except:
-            self.lgr.error("Error in assignCpuAndQueue for host_ip=%s of TE_DP_CONFIG: %s" %(self.__credentials['host_ip'], traceback.format_exc()))
+            self.lgr.error("Error in assignCpuAndQueue for host_ip=%s of TE_DP_CONFIG: %s" %(self.__host_ip, traceback.format_exc()))
             return None
 
     ############################################# MGMT CALLS #############################################
     def run_mgmt_command_helper(self, run_mgmt_command_te_dp, args, job_timeout):
         try:
-            self.lgr.debug("run_mgmt_command_helper for host_ip=%s Called!" %self.__credentials['host_ip'])
+            self.lgr.debug("run_mgmt_command_helper for host_ip=%s Called!" %self.__host_ip)
             successDict = {"Success": 0, "Failure":[]}
 
             cpu = self.__cpu["mgmt_core"]
@@ -285,7 +288,7 @@ class TE_DP_CONFIG:
     ############################################# TECH SUPPORT CALLS #############################################
     def tech_support_helper(self, tech_support, args):
         try:
-            self.lgr.debug("tech_support_helper for host_ip=%s Called!" %self.__credentials['host_ip'])
+            self.lgr.debug("tech_support_helper for host_ip=%s Called!" %self.__host_ip)
             successDict = {"Success": 0, "Failure":[]}
             cpu = self.__cpu["mgmt_core"]
             #Make the call enqueue the start
@@ -304,13 +307,13 @@ class TE_DP_CONFIG:
         elif result.get('status',False):
             return True, {"SCPed logs" : True}
         else:
-            return False, "Unable to scp"
+            return False, result.get('statusmessage', "Unable to scp")
 
     ############################################# START #############################################
 
     def start_te_dp_helper(self, start_te_dp, args):
         try:
-            self.lgr.debug("start_te_dp_helper for host_ip=%s Called!" %self.__credentials['host_ip'])
+            self.lgr.debug("start_te_dp_helper for host_ip=%s Called!" %self.__host_ip)
             successDict = {"Success": 0, "Failure":[]}
 
             for _ in range(args['count_of_tedps']):
@@ -346,7 +349,7 @@ class TE_DP_CONFIG:
                 else:
                     successDict["Failure"].append(error)
 
-            self.lgr.debug("start_te_dp_helper for %s's result %s" %(self.__credentials['host_ip'], str(successDict)) )
+            self.lgr.debug("start_te_dp_helper for %s's result %s" %(self.__host_ip, str(successDict)) )
             return successDict
 
         except:
@@ -366,7 +369,7 @@ class TE_DP_CONFIG:
 
     #modification happens on both failure and success
     def __modify_state_on_start_failure(self, cpu):
-        self.lgr.debug("__modify_state_on_start_failure cpu=%d host=%s cpu_dict=%s" %(cpu,self.__credentials['host_ip'],str(self.__cpu)))
+        self.lgr.debug("__modify_state_on_start_failure cpu=%d host=%s cpu_dict=%s" %(cpu,self.__host_ip,str(self.__cpu)))
         self.__cpu['usedup_cpu_list'].remove(cpu)
         self.__cpu['free_cpu_list'].append(cpu)
         profileTagToReturn = self.get_instance_profile_tag(cpu)
@@ -382,7 +385,7 @@ class TE_DP_CONFIG:
         self.__cpu_to_tedp_mapping[cpu]['pid'] = pid
         self.__cpu_to_tedp_mapping[cpu]['state'] = self.__STATES["START"]
         config_hash = self.__cpu_to_hash_mapping[cpu]
-        self.__te_metrics_object.insert_running_configs(self.__credentials['host_ip'], cpu,
+        self.__te_metrics_object.insert_running_configs(self.__host_ip, cpu,
             config_hash['res'], config_hash['ses'], config_hash['traffic_mode'],
             config_hash['traffic_profile'])
         return self.get_instance_profile_tag(cpu)
@@ -391,7 +394,7 @@ class TE_DP_CONFIG:
 
     def stop_te_dp_helper(self, stop_te_dp, args):
         try:
-            self.lgr.debug("stop_te_dp_helper for host_ip=%s Called!" %self.__credentials['host_ip'])
+            self.lgr.debug("stop_te_dp_helper for host_ip=%s Called!" %self.__host_ip)
             successDict = {"Success": 0, "Failure":[]}
             pid_to_cpu = self.__get_cpu_running_pids(args['listOfPid'])
             for pid, cpu in pid_to_cpu.items():
@@ -419,7 +422,7 @@ class TE_DP_CONFIG:
             return False, profileToReturn
 
     def __modify_state_on_stop_success(self, cpu):
-        self.lgr.debug("__modify_state_on_stop_success cpu=%d host=%s" %(cpu, self.__credentials['host_ip']) )
+        self.lgr.debug("__modify_state_on_stop_success cpu=%d host=%s" %(cpu, self.__host_ip) )
         self.__cpu['usedup_cpu_list'].remove(cpu)
         self.__cpu['free_cpu_list'].append(cpu)
         profile_tag_to_return = self.__cpu_to_tedp_mapping[cpu]['instance_profile_tag']
@@ -428,7 +431,7 @@ class TE_DP_CONFIG:
         self.__cpu_to_tedp_mapping[cpu]['instance_profile_tag'] = None
         self.__cpu_to_tedp_mapping[cpu]['resource_config_tag'] = None
         self.__cpu_to_tedp_mapping[cpu]['session_config_tag'] = None
-        self.__te_metrics_object.update_stop_time_running_configs(self.__credentials['host_ip'], cpu)
+        self.__te_metrics_object.update_stop_time_running_configs(self.__host_ip, cpu)
         self.__cpu_to_hash_mapping.pop(cpu)
         return profile_tag_to_return
 
@@ -436,7 +439,7 @@ class TE_DP_CONFIG:
 
     def update_te_dp_helper(self, raw_update_te_dp, args):
         try:
-            self.lgr.debug("update_te_dp_helper for host_ip=%s Called!" %self.__credentials['host_ip'])
+            self.lgr.debug("update_te_dp_helper for host_ip=%s Called!" %self.__host_ip)
             successDict = {"Success": 0, "Failure":[]}
 
             cpu_pid_map_to_update = self.__get_n_cpu_pid_map_running_profile(args['profile_tag'], \
@@ -480,7 +483,7 @@ class TE_DP_CONFIG:
                     successDict["Failure"].append(error)
 
             return successDict
-            self.lgr.debug("update_te_dp_helper for %s's result %s" %(self.__credentials['host_ip'], str(successDict)) )
+            self.lgr.debug("update_te_dp_helper for %s's result %s" %(self.__host_ip, str(successDict)) )
 
         except:
             self.lgr.error("Error in update_te_dp_helper %s" %traceback.format_exc())
@@ -498,17 +501,17 @@ class TE_DP_CONFIG:
             return False, profileToReturn
 
     def __modify_state_on_update_success(self, cpu, pid):
-        self.lgr.debug("__modify_state_on_update_success cpu=%d host=%s" %(cpu, self.__credentials['host_ip']) )
+        self.lgr.debug("__modify_state_on_update_success cpu=%d host=%s" %(cpu, self.__host_ip) )
         self.__cpu_to_tedp_mapping[cpu]['state'] = self.__STATES["START"]
         self.__cpu_to_tedp_mapping[cpu]['pid'] = pid
         config_hash = self.__cpu_to_hash_mapping[cpu]
-        self.__te_metrics_object.update_running_configs(self.__credentials['host_ip'], cpu,
+        self.__te_metrics_object.update_running_configs(self.__host_ip, cpu,
             config_hash['res'], config_hash['ses'], config_hash['traffic_mode'],
             config_hash['traffic_profile'])
         return self.get_instance_profile_tag(cpu)
 
     def __modify_state_on_update_failure(self, cpu):
-        self.lgr.debug("__modify_state_on_update_failure cpu=%d host=%s cpu_dict=%s" %(cpu,self.__credentials['host_ip'],str(self.__cpu)))
+        self.lgr.debug("__modify_state_on_update_failure cpu=%d host=%s cpu_dict=%s" %(cpu,self.__host_ip,str(self.__cpu)))
         #Ambiguous Situation
         self.__cpu['usedup_cpu_list'].remove(cpu)
         self.__cpu['free_cpu_list'].append(cpu)
@@ -535,12 +538,12 @@ class TE_DP_CONFIG:
                 task_obj = rq_obj.enqueue_call(callToMake, kwargs=args)
             self.__task_mapping[typeOfTask][assignedCPU] = task_obj
             self.lgr.debug("Enqueued %s to %s in host_ip=%s and cpu=%d" %(str(callToMake), \
-                str(rq_obj), self.__credentials['host_ip'], assignedCPU))
+                str(rq_obj), self.__host_ip, assignedCPU))
             return True, None
         except:
             #LOCK NEEDED (Unlock)
             reason = "Error in enqueueCall for host_ip=%s of TE_DP_CONFIG: %s" \
-                %(self.__credentials['host_ip'], traceback.format_exc())
+                %(self.__host_ip, traceback.format_exc())
             self.lgr.error(reason)
             return False, reason
 
@@ -580,7 +583,7 @@ class TE_DP_CONFIG:
             maxRetries = max_tolerable_delay//time_to_sleep_bw_retires
 
             for i in range(maxRetries+1):
-                self.lgr.debug("get_mgmt_task_status_and_result Retry=%d/%d in host_ip=%s" %(i+1, maxRetries, self.__credentials['host_ip']))
+                self.lgr.debug("get_mgmt_task_status_and_result Retry=%d/%d in host_ip=%s" %(i+1, maxRetries, self.__host_ip))
                 cpu = self.__cpu["mgmt_core"]
                 task_obj = self.__task_mapping[typeOfTask][cpu]
                 #Task Completed
@@ -589,12 +592,12 @@ class TE_DP_CONFIG:
                     status, result_after_evaluation = self.__resultEvaluator[typeOfTask](result)
                     if status: #Task Success
                         taskResult["Success"] = result_after_evaluation
-                        self.lgr.debug("Success in host_ip=%s is %s" %(self.__credentials['host_ip'], \
+                        self.lgr.debug("Success in host_ip=%s is %s" %(self.__host_ip, \
                             str(result_after_evaluation)))
                     else: #Task Failed
                         taskResult["Failure"] = result_after_evaluation
                         taskResult["status"] = False
-                        self.lgr.debug("Failure in host_ip=%s is %s" %(self.__credentials['host_ip'], \
+                        self.lgr.debug("Failure in host_ip=%s is %s" %(self.__host_ip, \
                             str(result)))
                     self.__task_mapping[typeOfTask].pop(cpu)
 
@@ -603,22 +606,22 @@ class TE_DP_CONFIG:
                     taskResult["RQ-Failure"] += 1
                     taskResult["status"] = False
                     self.lgr.debug("RQ-Failure in host_ip={} and result={}".format(
-                        self.__credentials['host_ip'], task_obj.result))
+                        self.__host_ip, task_obj.result))
                     self.__task_mapping[typeOfTask].pop(cpu)
 
                 #If the tasks has been completed in all CPUs
                 if(not(bool(self.__task_mapping[typeOfTask].keys()))):
-                    self.lgr.debug("All cpus have completed the task in %s" %self.__credentials['host_ip'])
+                    self.lgr.debug("All cpus have completed the task in %s" %self.__host_ip)
                     taskResult = self.__clean_task_result(taskResult)
                     lock.acquire()
-                    resultDict[self.__credentials['host_ip']] = taskResult
+                    resultDict[self.__host_ip] = taskResult
                     lock.release()
                     return
 
                 if i == maxRetries:
                     taskResult["Incomplete"]+=1
                     taskResult["status"] = False
-                    self.lgr.warning("Task %s was incomplete in cpu=%d and host_ip=%s" %(typeOfTask, cpu, self.__credentials['host_ip']))
+                    self.lgr.warning("Task %s was incomplete in cpu=%d and host_ip=%s" %(typeOfTask, cpu, self.__host_ip))
                     self.__task_mapping[typeOfTask].pop(cpu)
 
                 #Wait for max_tolerable_delay/maxRetries time before giving next retry
@@ -627,13 +630,13 @@ class TE_DP_CONFIG:
 
             taskResult = self.__clean_task_result(taskResult)
             lock.acquire()
-            resultDict[self.__credentials['host_ip']] = taskResult
+            resultDict[self.__host_ip] = taskResult
             lock.release()
             return
         except:
             self.lgr.error("Error in get_mgmt_task_status_and_result %s" %traceback.format_exc())
             lock.acquire()
-            resultDict[self.__credentials['host_ip']] = "Error in get_mgmt_task_status_and_result %s" %traceback.format_exc()
+            resultDict[self.__host_ip] = "Error in get_mgmt_task_status_and_result %s" %traceback.format_exc()
             lock.release()
             return
 
@@ -654,7 +657,7 @@ class TE_DP_CONFIG:
             maxRetries = max_tolerable_delay//time_to_sleep_bw_retires
 
             for i in range(maxRetries+1):
-                self.lgr.debug("get_task_status_and_result Retry=%d/%d in host_ip=%s" %(i+1, maxRetries, self.__credentials['host_ip']))
+                self.lgr.debug("get_task_status_and_result Retry=%d/%d in host_ip=%s" %(i+1, maxRetries, self.__host_ip))
 
                 #Iterate through the cpu-task mapping
                 list_of_cpus = copy(list(self.__task_mapping[typeOfTask].keys()))
@@ -667,11 +670,11 @@ class TE_DP_CONFIG:
                         status, task_profile_tag = self.__resultEvaluator[typeOfTask](result, cpu)
                         if status: #Task Success
                             taskResult["Success"][task_profile_tag] += 1
-                            self.lgr.debug("Success for task_profile_tag=%s in host_ip=%s" %(task_profile_tag, self.__credentials['host_ip']))
+                            self.lgr.debug("Success for task_profile_tag=%s in host_ip=%s" %(task_profile_tag, self.__host_ip))
                         else: #Task Failed
                             taskResult["Failure"][task_profile_tag].append(result)
                             taskResult["status"] = False
-                            self.lgr.debug("Failure for task_profile_tag=%s in host_ip=%s and result=%s" %(task_profile_tag, self.__credentials['host_ip'], str(result)))
+                            self.lgr.debug("Failure for task_profile_tag=%s in host_ip=%s and result=%s" %(task_profile_tag, self.__host_ip, str(result)))
                         self.__task_mapping[typeOfTask].pop(cpu)
 
                     #Task Failed due to RQ Error
@@ -680,15 +683,15 @@ class TE_DP_CONFIG:
                         taskResult["RQ-Failure"][task_profile_tag] += 1
                         taskResult["status"] = False
                         self.lgr.debug("RQ-Failure in host_ip={} task_profile_tag={} and result={}".format(
-                            self.__credentials['host_ip'], task_profile_tag, task_obj.result))
+                            self.__host_ip, task_profile_tag, task_obj.result))
 
                     #If the tasks has been completed in all CPUs
                     if(not(bool(self.__task_mapping[typeOfTask].keys()))):
                         task_profile_tag = self.get_instance_profile_tag(cpu)
-                        self.lgr.debug("All cpus have completed the task in %s" %self.__credentials['host_ip'])
+                        self.lgr.debug("All cpus have completed the task in %s" %self.__host_ip)
                         taskResult = self.__clean_task_result(taskResult)
                         lock.acquire()
-                        resultDict[self.__credentials['host_ip']] = taskResult
+                        resultDict[self.__host_ip] = taskResult
                         lock.release()
                         return
 
@@ -696,7 +699,7 @@ class TE_DP_CONFIG:
                         status, task_profile_tag = self.__resultEvaluator[typeOfTask](None, cpu)
                         taskResult["Incomplete"][task_profile_tag]+=1
                         taskResult["status"] = False
-                        self.lgr.warning("Task %s was incomplete in cpu=%d and host_ip=%s" %(typeOfTask,cpu, self.__credentials['host_ip']))
+                        self.lgr.warning("Task %s was incomplete in cpu=%d and host_ip=%s" %(typeOfTask,cpu, self.__host_ip))
                         self.__task_mapping[typeOfTask].pop(cpu)
 
                 #Wait for max_tolerable_delay/maxRetries time before giving next retry
@@ -705,12 +708,12 @@ class TE_DP_CONFIG:
 
             taskResult = self.__clean_task_result(taskResult)
             lock.acquire()
-            resultDict[self.__credentials['host_ip']] = taskResult
+            resultDict[self.__host_ip] = taskResult
             lock.release()
             return
         except:
             self.lgr.error("Error in get_task_status_and_result %s" %traceback.format_exc())
             lock.acquire()
-            resultDict[self.__credentials['host_ip']] = "Error in get_task_status_and_result %s" %traceback.format_exc()
+            resultDict[self.__host_ip] = "Error in get_task_status_and_result %s" %traceback.format_exc()
             lock.release()
             return
