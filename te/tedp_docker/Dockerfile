@@ -34,6 +34,9 @@ FROM ubuntu:16.04
 ENV WORKDR=/opt/te/
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
+ENV IPADDRESS=127.0.0.1
+ENV CTRL_IPADDRESS=127.0.0.1
+ENV CTRL_FLASK_PORT=5000
 ARG usr_lib_path=/usr/local/lib
 ARG usr_lib64_path=/lib/x86_64-linux-gnu
 
@@ -44,7 +47,8 @@ RUN apt update && \
     apt install -y python3-pip --reinstall && \
     apt install -y sshpass && \
     apt install -y logrotate && \
-    apt install -y cron
+    apt install -y cron && \
+    apt install -y supervisor
 
 # python related requirements
 COPY te/tedp_docker/requirements.txt /tmp/
@@ -96,6 +100,7 @@ RUN echo "kernel.msgmax = 10240 //Size of each message in bytes (10K)" >> /etc/s
 # add python files
 ADD te/TE_UTILS.py \
     te/TE_WORK.py \
+    te/RQ_CONNECTOR.py \
     $WORKDR
 
 # copy binary and library from previous stage
@@ -109,11 +114,19 @@ RUN tar -xvf ${usr_lib_path}/usr_lib_deps.tar.gz -C / && rm ${usr_lib_path}/usr_
     tar -xvf ${lib64_path}/lib64_deps.tar.gz -C / && rm ${lib64_path}/lib64_deps.tar.gz && \
     ldconfig -v
 
+# add rq.service
+RUN echo "[supervisord]" >> /etc/supervisord.conf && \
+    echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "[program:RQ_CONNECTOR]" >> /etc/supervisord.conf && \
+    echo "command=python3 /opt/te/RQ_CONNECTOR.py" >> /etc/supervisord.conf
+
+# Add te/tedp_docker/clean_tedp.sh (used to clean tedp without ssh)
+ADD te/tedp_docker/clean_tedp.sh $WORKDR/
+
 # copy src and makefile for debug purpose
 ADD te_dp/src $WORKDR/src
 ADD te_dp/Makefile $WORKDR
 
 RUN echo "Done TE_DP Dockerization!!"
 
-ENTRYPOINT ["/sbin/init", "sysctl -p", "service cron restart"]
-CMD ["systemctl", "cron"]
+ENTRYPOINT service cron restart && /usr/bin/supervisord

@@ -908,7 +908,7 @@
             "post" : {
                 "tags": ["SETUP"],
                 "operationId": "SETUP connect",
-                "summary": "Connect the Traffic Engine Datapath containers with Traffic Engine Controller container",
+                "summary": "If datapath instance is manually setup, add the datapath to controller's known lists to authenticate",
                 "requestBody": {
                     "description": "Mapping from Client IP to username / password",
                     "required": true,

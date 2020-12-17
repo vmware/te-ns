@@ -46,7 +46,6 @@ ENV LOGLEVEL=10
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
-ARG IMAGE_ID=-1
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update && \
     apt-get install -y redis-server && \
@@ -92,7 +91,6 @@ COPY te_docker/udp_client_metrics_dashboard.json /var/lib/grafana/dashboards/
 COPY te_docker/tcp_client_metrics_dashboard.json /var/lib/grafana/dashboards/
 
 ADD TE.py \
-    CONNECTOR.py \
     TE_CLASS.py \
     TE_UTILS.py \
     TE_WORK.py \
@@ -108,6 +106,7 @@ COPY te_swagger.json $WORKDR/static/
 COPY tedp_docker.tar \
     /var/www/html/
 RUN md5sum /var/www/html/tedp_docker.tar > /var/www/html/check.sum
+ARG IMAGE_ID=-1
 RUN echo $IMAGE_ID > /var/www/html/image.id
 RUN chmod -R 755 /var/www/html/
 

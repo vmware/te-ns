@@ -34,6 +34,8 @@ from TE_UTILS import convert, Logger, SysVQ
 from sysv_ipc import ftok
 import traceback
 from collections import defaultdict
+import paramiko
+from scp import SCPClient
 
 LOG_PATH = '/tmp/'
 LOG_PATH_TE_DP = '/tmp/ramcache/'
@@ -93,16 +95,18 @@ def run_mgmt_command_te_dp(cmd=None):
         return {"status" : False, "statusmessage" : "Exception Occurred: %s" %traceback.format_exc()}
 
 @tejob('te_broadcast_q')
-def tech_support(my_ip, remote_ip, remote_user, remote_pwd, remote_path, type_of_logs, bin_src_flag):
+def tech_support(my_ip, remote_ip, remote_user, remote_pwd, remote_path, type_of_logs):
     try:
-        folders_to_make = [os.path.join(remote_path, 'te_%s_logs' %my_ip)]
+        folders_to_make = [os.path.join("/te_host/", 'te_%s_logs' %my_ip)]
         files_to_send = []
+        tar_file = "te_{}_logs.tar.gz".format(my_ip)
+        tar_file_with_path = os.path.join("/te_host/", tar_file)
 
         if(type_of_logs == "all" or type_of_logs == "setup"):
             destination = os.path.join(folders_to_make[0], 'setup_logs/')
             make_folder = False
-            #connector.log
-            file_interested = '/te_root/connector.log'
+            #rq.log
+            file_interested = '/tmp/rq.log'
             if(os.path.exists(file_interested)):
                 files_to_send.append((file_interested, destination))
                 make_folder = True
@@ -123,36 +127,57 @@ def tech_support(my_ip, remote_ip, remote_user, remote_pwd, remote_path, type_of
                 files_to_send.append((file_interested, destination))
                 folders_to_make.append(destination)
 
-        if(type_of_logs == "all" or type_of_logs == "core"):
-            destination = os.path.join(folders_to_make[0], 'core_logs/')
-            file_interested = '/opt/te/core.te_dp.*'
+            file_interested = '/tmp/*.log'
             if(bool(glob.glob(file_interested))):
                 files_to_send.append((file_interested, destination))
                 folders_to_make.append(destination)
 
-        if(bin_src_flag):
-            if(type_of_logs == "all" or type_of_logs == "process" or type_of_logs=='core'):
-                file_interested_bin='/opt/te/bin/'
-                file_interested_src='/opt/te/src/'
-                file_interested_makefile='opt/te/Makefile'
-                destination=os.path.join(remote_path,'bin_src_file_dir/')
-                files_to_send.append((file_interested_bin, destination))
-                files_to_send.append((file_interested_src, destination))
-                files_to_send.append((file_interested_makefile, destination))
+        if(type_of_logs == "all" or type_of_logs == "core"):
+            destination = os.path.join(folders_to_make[0], 'core_logs/')
+            file_interested = '/opt/te/core.*'
+            if(bool(glob.glob(file_interested))):
+                files_to_send.append((file_interested, destination))
                 folders_to_make.append(destination)
-                
+
+        if(type_of_logs == "all" or type_of_logs == "process" or type_of_logs=='core'):
+            file_interested_bin='/opt/te/bin/'
+            file_interested_src='/opt/te/src/'
+            file_interested_makefile='opt/te/Makefile'
+            destination=os.path.join(folders_to_make[0],'bin_src_file_dir/')
+            files_to_send.append((file_interested_bin, destination))
+            files_to_send.append((file_interested_src, destination))
+            files_to_send.append((file_interested_makefile, destination))
+            folders_to_make.append(destination)
+
         if(bool(folders_to_make)):
-            str_folder_to_make = " ".join(folders_to_make[1:])
-            cmd = "sshpass -p %s ssh -o 'StrictHostKeyChecking no' -t %s@%s 'rm -rf %s; mkdir -p %s'" \
-                %(remote_pwd, remote_user, remote_ip, folders_to_make[0], str_folder_to_make)
+            str_folder_to_make = " ".join(folders_to_make)
+            cmd = "rm -rf %s; mkdir -p %s" %(folders_to_make[0], str_folder_to_make)
             (out, err) = __exec_cmd(cmd)
             lgr.info("Executing cmd=%s, out=%s, err=%s" %(cmd, out, err))
 
         for (src, dest) in files_to_send:
-            cmd = "sshpass -p %s scp -o 'StrictHostKeyChecking no' -r %s %s@%s:%s" \
-                %(remote_pwd, src, remote_user, remote_ip, dest)
+            cmd = "cp -r %s %s" %(src, dest)
             (out, err) = __exec_cmd(cmd)
-            lgr.info("Executing cmd=%s, out=%s, err=%s" %(cmd, out, err))    
+            lgr.info("Executing cmd=%s, out=%s, err=%s" %(cmd, out, err))
+
+        cmd = "tar -zcvf {} {}/*; rm -rf {}".format(tar_file_with_path, folders_to_make[0], folders_to_make[0])
+        (out, err) = __exec_cmd(cmd)
+        lgr.info("Executing cmd=%s, out=%s, err=%s" %(cmd, out, err))
+
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            if remote_pwd:
+                ssh.connect(remote_ip, username=remote_user, password=remote_pwd)
+            else:
+                ssh.connect(remote_ip, username=remote_user)
+            scp = SCPClient(ssh.get_transport())
+            scp.put(tar_file_with_path, remote_path)
+        except:
+            lgr.error(traceback.format_exc())
+            return {"status" : False,
+                    "statusmessage" : "Unable to SCP but logs are available at /tmp/{} in {}".format(
+                        tar_file, my_ip)}
         return {'status':True, 'statusmessage':'Sent requested files'}
     except:
         lgr.error(traceback.format_exc())
