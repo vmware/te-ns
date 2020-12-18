@@ -13,6 +13,11 @@ How to package TE-NS
 
 1A) How to build and host TE-NS repo in a HTTP Server in 1 shot
 ===============================================================
+* Pre-requisites include:
+  - python3
+  - nginx / apache2 installed and running
+  - docker
+  - pip3 installed paramiko, flask-swagger-ui, scp
 ```
 ./build_te_and_serve.sh <REPO_PATH> <REPO_NAME> <REPO_IP> <PATH TO TRAFFIC ENGINE> <PASSWORD_OF_ROOT_USER> <SWAGGER_PORT>(optional -- default 4000)
 ./build_te_and_serve.sh /usr/share/nginx/html/ te-ns-repo 127.0.0.1 . avi123 4000
