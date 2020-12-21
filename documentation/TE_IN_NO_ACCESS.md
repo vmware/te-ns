@@ -56,7 +56,7 @@ NOTE: Make sure the CTRL_IP and FLASK_PORT variables are same as that given to c
 
 * Run the following commands
 ```
-rm -f /root/tedp_docker.tar; wget -q -T90 http://$CTRL_IP:$NGINX_PORT/tedp_docker.tar -P $PATH_TO_IMAGE
+rm -f /root/tedp_docker.tar; wget --no-check-certificate -q -T90 http://$CTRL_IP:$NGINX_PORT/tedp_docker.tar -P $PATH_TO_IMAGE
 docker images | grep -w tedp | awk '{print $3}' | xargs -I {} docker rmi -f {} && \
 	docker load -i $PATH_TO_IMAGE/tedp_docker.tar
 docker run --privileged --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
