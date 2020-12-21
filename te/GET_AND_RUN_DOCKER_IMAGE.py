@@ -330,7 +330,7 @@ class DOCKER_INITIALIZER:
                     return True
                 else:
                     # If check.sum also doesn't match, then get the tar
-                    cmd = "rm -f " + tarFile + "; wget -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
+                    cmd = "rm -f " + tarFile + "; wget --no-check-certificate -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
                     self.lgr.debug("GETTING THE UPDATED IMAGE WITH CMD='%s'" %cmd)
                     (out, err) = self.__exec_cmd(cmd)
                     if err:
@@ -339,7 +339,7 @@ class DOCKER_INITIALIZER:
                     self.lgr.debug("Downloaded TAR Image")
                     return True
             else:
-                cmd = "wget -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
+                cmd = "wget --no-check-certificate -q -T90 " + dockerTarLink + " -P " + self.pathToDocker
                 self.lgr.debug("GETTING THE NEW IMAGE WITH CMD='%s'" %cmd)
                 (out, err) = self.__exec_cmd(cmd)
                 if(err):
