@@ -146,6 +146,7 @@ class DOCKER_INITIALIZER:
         try:
             DICT_OF_SERVICES = {"flask"    : "5000",
                                 "nginx"    : "5001",
+                                "grafana"  : "5002",
                                 "redis"    : "6379",
                                 "postgres" : "5432",
                                 "zmq"      : "5555"}
@@ -185,13 +186,13 @@ class DOCKER_INITIALIZER:
                                     "--net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/ "\
                                     "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s "\
                                     "-e REDIS_PORT=%s -e NGINX_PORT=%s -e POSTGRES_PORT=%s "\
-                                    "-e ZMQ_PORT=%s -e STAT_COLLECT_INTERVAL=%d "\
+                                    "-e ZMQ_PORT=%s -e GRAFANA_PORT=%s -e STAT_COLLECT_INTERVAL=%d "\
                                     "-e STAT_DUMP_INTERVAL=%d -e LOGPATH=%s -e LOGLEVEL=%d %s" \
                                     %(self.docker_detials["container_name"], \
                                     self.te_controller_ip, DICT_OF_SERVICES['flask'], \
                                     DICT_OF_SERVICES['redis'], DICT_OF_SERVICES['nginx'], \
                                     DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'], \
-                                    self.stat_collect_interval, \
+                                    DICT_OF_SERVICES['grafana'], self.stat_collect_interval, \
                                     self.stat_dump_interval, self.te_logpath, self.te_loglevel,
                                     self.docker_detials["image_name"])
             print("flask=%s" %DICT_OF_SERVICES['flask'])

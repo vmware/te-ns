@@ -11,6 +11,7 @@ export CTRL_IP="10.79.169.156"
 export FLASK_PORT="5000"
 export REDIS_PORT="6378"
 export NGINX_PORT="5001"
+export GRAFANA_PORT="5002"
 export POSTGRES_PORT="5432"
 export ZMQ_PORT="5555"
 export PATH_TO_IMAGE="/root"
@@ -18,7 +19,7 @@ export PATH_TO_IMAGE="/root"
 
 * Please make sure the ports are not occupied using netstat / ss commands (if) not change the variables
 ```
-netstat -planet | egrep "$FLASK_PORT|$REDIS_PORT|$NGINX_PORT|$POSTGRES_PORT|$ZMQ_PORT"
+netstat -planet | egrep "$FLASK_PORT|$REDIS_PORT|$NGINX_PORT|$POSTGRES_PORT|$ZMQ_PORT|$GRAFANA_PORT"
 ```
 
 * Run the following commands:
@@ -28,10 +29,10 @@ docker images | grep -w te | awk '{print $3}' | xargs -I {} docker rmi -f {} && 
 docker run --privileged -d -it --name tev2.0 --net=host -v /tmp/:/te_host/ \
 	-v $HOME/.ssh/:/root/.ssh/ -e PYTHONUNBUFFERED=0 -e IPADRESS=$CTRL_IP \
 	-e FLASK_PORT=$FLASK_PORT -e REDIS_PORT=$REDIS_PORT -e NGINX_PORT=$NGINX_PORT \
-	-e POSTGRES_PORT=$POSTGRES_PORT -e ZMQ_PORT=$ZMQ_PORT te:v2.0
+	-e POSTGRES_PORT=$POSTGRES_PORT -e ZMQ_PORT=$ZMQ_PORT -e GRAFANA_PORT=$GRAFANA_PORT te:v2.0
 ```
 
-* Wait till all the above specified ports are up and listening
+* Wait till all the above specified ports are up and listening (grafana is not up and running by default - use grafana() api to enable grafana)
 ```
 netstat -planet | egrep "$FLASK_PORT|$REDIS_PORT|$NGINX_PORT|$POSTGRES_PORT|$ZMQ_PORT"
 ```

@@ -34,6 +34,7 @@ FROM ubuntu:16.04
 ENV IPADRESS=127.0.0.1
 ENV FLASK_PORT=5000
 ENV NGINX_PORT=5001
+ENV GRAFANA_PORT=5002
 ENV REDIS_PORT=6379
 ENV POSTGRES_PORT=5432
 ENV ZMQ_PORT=5555
@@ -121,5 +122,5 @@ ENTRYPOINT sed -i "s/5001/$NGINX_PORT/g" /etc/nginx/sites-available/default && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
     echo "[program:TE]" >> /etc/supervisord.conf && \
     echo "command=python3 $WORKDR/TE.py -m $IPADRESS -fp $FLASK_PORT -rp $REDIS_PORT -np $NGINX_PORT \
-    -pp $POSTGRES_PORT -zp $ZMQ_PORT -ct $STAT_COLLECT_INTERVAL -dt $STAT_DUMP_INTERVAL \
+    -pp $POSTGRES_PORT -zp $ZMQ_PORT -gp $GRAFANA_PORT -ct $STAT_COLLECT_INTERVAL -dt $STAT_DUMP_INTERVAL \
     -lp $LOGPATH -ll $LOGLEVEL" >> /etc/supervisord.conf && /usr/bin/supervisord
