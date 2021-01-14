@@ -42,13 +42,14 @@ class TE(object):
     __metaclass__ = Singleton
 
     def __init__(self, daemon_ip, flask_port, redis_port, nginx_port, \
-        postgres_port, zmq_port, loglevel):
+        postgres_port, zmq_port, grafana_port, loglevel):
         self.__daemon_ip               = daemon_ip
         self.__flask_port              = flask_port
         self.__nginx_port              = nginx_port
         self.__redis_port              = redis_port
         self.__postgres_port           = postgres_port
         self.__zmq_port                = zmq_port
+        self.__grafana_port            = grafana_port
         self.__loglevel                = loglevel
         self.__te_dp_dict              = {}
         self.__resource_config         = None
@@ -77,6 +78,8 @@ class TE(object):
         return self.__postgres_port
     def get_zmq_port(self):
         return self.__zmq_port
+    def get_grafana_port(self):
+        return self.__grafana_port
     def get_loglevel(self):
         return self.__loglevel
 

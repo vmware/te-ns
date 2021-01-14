@@ -230,6 +230,7 @@ class TensTE():
         stat_dump_interval, maxTolerableDelay, maxRetry, logpath, loglevel):
         DICT_OF_SERVICES = {"flask"    : "5000",
                             "nginx"    : "5001",
+                            "grafana"  : "5002",
                             "redis"    : "6379",
                             "postgres" : "5432",
                             "zmq"      : "5555"}
@@ -466,12 +467,12 @@ class TensTE():
             return {'status':status, 'statusmessage':message}
         cmd = "docker run --privileged -d -it --name %s --net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/"\
                "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s -e REDIS_PORT=%s "\
-               "-e NGINX_PORT=%s -e POSTGRES_PORT=%s -e ZMQ_PORT=%s "\
+               "-e NGINX_PORT=%s -e POSTGRES_PORT=%s -e ZMQ_PORT=%s -e GRAFANA_PORT=%s "\
                "-e STAT_COLLECT_INTERVAL=%d -e STAT_DUMP_INTERVAL=%d "\
                "-e LOGPATH=%s -e LOGLEVEL=%d %s"\
                %(buildImages["TE"]["container_name"], host, \
                 DICT_OF_SERVICES['flask'], DICT_OF_SERVICES['redis'], DICT_OF_SERVICES['nginx'],
-                DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'],
+                DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'], DICT_OF_SERVICES['grafana'],
                 stat_collect_interval, stat_dump_interval, logpath, loglevel,
                 buildImages["TE"]["image_name"])
 
@@ -637,9 +638,9 @@ class TensTE():
         url = self.__url('setup_tedp')
         if url is not None:
             resp = requests.post(url, json={'te_dp_dict': te_dp_dict})
-            if resp.status_code is (200, 201):
-                raise Exception('POST setup_tedp/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST setup_tedp/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("setup_tedp: Response is %s" % Jdata)
             return Jdata
         return "TE Controller flask port not known. Please set it using the call set_controller_flask_port(port)"
@@ -667,9 +668,9 @@ class TensTE():
         url = self.__url('connect')
         if url is not None:
             resp = requests.post(url, json={'te_dp_dict': te_dp_dict})
-            if resp.status_code is (200, 201):
-                raise Exception('POST connect/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST connect/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("connect: Response is %s" % Jdata)
             return Jdata
         return "TE Controller flask port not known. Please set it using the call set_controller_flask_port(port)"
@@ -758,9 +759,9 @@ class TensTE():
             resp = requests.post(url, json={'resource_config': resource_config, 'session_config': session_config,\
                     'instanceProfileConfig':instanceProfileConfig, 'te_dp_dict':te_dp_dict, \
                     'max_tolerable_delay':max_tolerable_delay, 'client_cert_bundle':client_cert_bundle})
-            if resp.status_code is (200, 201):
-                raise Exception('POST start/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST start/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("start: Response is %s" % Jdata)
             return Jdata
         else:
@@ -799,9 +800,9 @@ class TensTE():
         if url is not None:
             resp = requests.post(url, json={'by_instance_profile_tag':by_instance_profile_tag, \
             'by_host_and_instance_profile_tag':by_host_and_instance_profile_tag, 'max_tolerable_delay':max_tolerable_delay})
-            if resp.status_code is (200, 201):
-                raise Exception('POST stop/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST stop/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("stop: Response is %s" % Jdata)
             return Jdata
         else:
@@ -821,9 +822,9 @@ class TensTE():
         url = self.__url('get_states')
         if url is not None:
             resp = requests.post(url, json={'no_args':'no_args'})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_states/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_states/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("getStates: Response is %s" % Jdata)
             return Jdata
         else:
@@ -913,9 +914,9 @@ class TensTE():
             resp = requests.post(url, json={'resource_config': resource_config, 'session_config': session_config,\
                         'instanceProfileConfig':instanceProfileConfig, 'te_dp_dict': te_dp_dict, 'client_cert_bundle':client_cert_bundle,
                         'max_tolerable_delay':max_tolerable_delay})
-            if resp.status_code is (200, 201):
-                raise Exception('POST update_config/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST update_config/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("update_config: Response is %s" % Jdata)
             return Jdata
         else:
@@ -937,9 +938,9 @@ class TensTE():
         url = self.__url('clean')
         if url is not None:
             resp = requests.post(url, json={'remove_containers':remove_containers})
-            if resp.status_code is (200, 201):
-                raise Exception('POST clean/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST clean/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("clear_config: Response is %s" % Jdata)
             return Jdata
         else:
@@ -961,9 +962,9 @@ class TensTE():
         url = self.__url('get_active_tedp')
         if url is not None:
             resp = requests.post(url, json={'tedps_to_query':tedps_to_query})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_active_tedp/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_active_tedp/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_active_tedp: Response is %s" % Jdata)
             return Jdata
         else:
@@ -992,9 +993,9 @@ class TensTE():
         url = self.__url('get_cpu_count')
         if url is not None:
             resp = requests.post(url, json={'te_dp_dict':te_dp_dict})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_cpu_count/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_cpu_count/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_cpu_count: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1020,9 +1021,9 @@ class TensTE():
             if(stat_dump_interval is None):
                 return "Please provide stat_dump_interval"
             resp = requests.post(url, json={'stat_dump_interval':stat_dump_interval})
-            if resp.status_code is (200, 201):
-                raise Exception('POST alter_stat_dump_interval/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST alter_stat_dump_interval/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("alter_stat_dump_interval: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1048,9 +1049,9 @@ class TensTE():
             if(stat_collect_interval is None):
                 return "Please provide stat_collect_interval"
             resp = requests.post(url, json={'stat_collect_interval':stat_collect_interval})
-            if resp.status_code is (200, 201):
-                raise Exception('POST alter_stat_collect_interval/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST alter_stat_collect_interval/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("alter_stat_collect_interval: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1074,9 +1075,9 @@ class TensTE():
         url = self.__url('alter_metrics_collection')
         if url is not None:
             resp = requests.post(url, json={'state':state})
-            if resp.status_code is (200, 201):
-                raise Exception('POST alter_metrics_collection/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST alter_metrics_collection/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("alter_metrics_collection: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1101,9 +1102,9 @@ class TensTE():
         url = self.__url('alter_memory_metrics_collection')
         if url is not None:
             resp = requests.post(url, json={'state':state})
-            if resp.status_code is (200, 201):
-                raise Exception('POST alter_memory_metrics_collection/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST alter_memory_metrics_collection/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("alter_memory_metrics_collection: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1123,9 +1124,9 @@ class TensTE():
         url = self.__url('get_current_te_time')
         if url is not None:
             resp = requests.post(url, json={'no_args':'no_args'})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_current_te_time/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_current_te_time/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_current_te_time: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1256,9 +1257,9 @@ class TensTE():
                                     'traffic_mode' : traffic_mode,
                                     'filter_clauses':filter_clauses,
                                     'is_named' : is_named})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_vip_metrics/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_vip_metrics/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_vip_metrics: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1337,9 +1338,9 @@ class TensTE():
                                     'traffic_mode' : traffic_mode,
                                     'filter_clauses':filter_clauses,
                                     'is_named' : is_named})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_ses_metrics/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_ses_metrics/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_ses_metrics: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1413,9 +1414,9 @@ class TensTE():
             resp = requests.post(url, json={'type':type_of_metrics,
                                     'filter_clauses':filter_clauses,
                                     'is_named' : is_named})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_memory_metrics/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_memory_metrics/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_memory_metrics: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1502,9 +1503,9 @@ class TensTE():
                                     'is_named' : is_named,
                                     "error_group_interval" : \
                                         error_group_interval})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_error_metrics/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_error_metrics/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_error_metrics: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1537,9 +1538,9 @@ class TensTE():
             resp = requests.post(url, json={'res_hash_list' : res_hash_list,
                                             'ses_hash_list' : ses_hash_list,
                                             'is_named' : is_named})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_configs/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_configs/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_configs: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1570,9 +1571,9 @@ class TensTE():
             }
 
             resp = requests.post(url, json={'filter_clauses':filter_clauses})
-            if resp.status_code is (200, 201):
-                raise Exception('POST get_client_history/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST get_client_history/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("get_client_history: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1619,9 +1620,9 @@ class TensTE():
             resp = requests.post(url, json={"global_dns":global_dns,
                                             "te_dp_dict":te_dp_dict,
                                             "overwrite":overwrite})
-            if resp.status_code is (200, 201):
-                raise Exception('POST update_dns/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST update_dns/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("update_dns: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1644,9 +1645,9 @@ class TensTE():
         if url is not None:
 
             resp = requests.post(url, json={"te_dp_dict":te_dp_dict})
-            if resp.status_code is (200, 201):
-                raise Exception('POST reset_dns/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST reset_dns/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("reset_dns: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1674,9 +1675,9 @@ class TensTE():
 
             resp = requests.post(url, json={"te_dp_dict":te_dp_dict, \
                 "cmd":cmd, "job_timeout":job_timeout})
-            if resp.status_code is (200, 201):
-                raise Exception('POST execute_cmd/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST execute_cmd/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("execute_cmd: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1711,9 +1712,9 @@ class TensTE():
             resp = requests.post(url, json={'te_dp_dict':te_dp_dict,
                 'log_type':log_type, 'max_tolerable_delay':max_tolerable_delay,
                 'scp_user':scp_user, 'scp_passwd':scp_passwd})
-            if resp.status_code is (200, 201):
-                raise Exception('POST tech_support/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST tech_support/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("tech_support: Response is %s" % Jdata)
             return Jdata
         else:
@@ -1735,9 +1736,9 @@ class TensTE():
         url = self.__url('grafana')
         if url is not None:
             resp = requests.post(url, json={'state':state})
-            if resp.status_code is (200, 201):
-                raise Exception('POST grafana/ {}'.format(resp.status_code))
             Jdata = resp.json()
+            if resp.status_code not in [200, 201]:
+                raise Exception('POST grafana/ {} {}'.format(resp.status_code, Jdata))
             lgr.debug("grafana: Response is %s" % Jdata)
             return Jdata
         else:
