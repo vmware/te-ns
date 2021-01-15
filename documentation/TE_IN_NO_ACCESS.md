@@ -119,31 +119,36 @@ In [10]: tedp_dict = {
         }
     }
 
-In [11]: obj.start(resource_config, session_config, instanceProfileConfig, tedp_dict)
+In [11]: obj.grafana(True) # To enable grafana service
 Out[11]:
+{'status': True,
+ 'statusmessage': 'Grafana service is running at 10.79.169.156:5002 with creds: admin / admin '}
+
+In [12]: obj.start(resource_config, session_config, instanceProfileConfig, tedp_dict)
+Out[12]:
 {'status': True,
  'statusmessage': {'client-start': {'10.79.169.156': {'inst1': 1}}}}
 
 ## Increase number of client proceses (max is #cpu - 1)
-In [12]: tedp_dict = {
+In [13]: tedp_dict = {
         "10.79.169.156" : {
             "instance_profile" : {"inst1" : 3}
         }
     }
 
-In [13]: obj.update_config(resource_config, session_config, instanceProfileConfig, tedp_dict)
-Out[13]:
+In [14]: obj.update_config(resource_config, session_config, instanceProfileConfig, tedp_dict)
+Out[14]:
 {'status': True,
  'statusmessage': {'client-start': {'10.79.169.156': {'inst1': 2}}}}
 
-In [14]: obj.get_vip_metrics("TOTAL")
-Out[14]:
+In [15]: obj.get_vip_metrics("TOTAL")
+Out[15]:
 {'status': True,
  'statusmessage': {'vip=http://www.example.com': {'bytes_download': 177317056.0,
  ..
  ..
 }
 
-In [15]: obj.stop()
-Out[15]: {'status': True, 'statusmessage': {'10.79.169.156': {'inst1': 3}}}
+In [16]: obj.stop()
+Out[16]: {'status': True, 'statusmessage': {'10.79.169.156': {'inst1': 3}}}
 ```
