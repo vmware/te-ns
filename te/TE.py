@@ -166,7 +166,7 @@ class FlaskApplicationWrapper:
     ################################# BASIC FUNCTIONS ####################################
 
     def __init__(self, te_daemon_ip, flask_port, redis_port, nginx_port, \
-        postgres_port, zmq_port, stat_collect_interval, stat_dump_interval, logpath,
+        postgres_port, zmq_port, grafana_port, stat_collect_interval, stat_dump_interval, logpath,
         loglevel):
 
         #LOGGER
@@ -177,7 +177,7 @@ class FlaskApplicationWrapper:
         try:
             #TE CLASS OBJECT
             self.__te_controller_obj = TE(te_daemon_ip, flask_port, redis_port, nginx_port, \
-                postgres_port, zmq_port, loglevel)
+                postgres_port, zmq_port, grafana_port, loglevel)
 
             #ALL STATES OF TE-FSM
             self.__TE_STATE = { 'INIT' : 0,  'RUNNING' : 1 }
@@ -2283,48 +2283,30 @@ class FlaskApplicationWrapper:
             if err is None:
                 return self.__success("Grafana sevice stopped successfully")
         else:
-            # Default port for grafana
-            grafana_port = "5002"
+            grafana_port = self.__te_controller_obj.get_grafana_port()
 
             #Uncomment this line in grafana.in config file, to set the the port number
             subprocess.call("sed -i 's/;http_port/http_port/g' /etc/grafana/grafana.ini" , shell=True)
 
             #Check if the default port is pre-occupied or not, if occupied assign a random port
-            cmd_check_port = "netstat -laneut | grep -x {} | wc -l".format(grafana_port)
+            cmd_check_port = "netstat -laneut | grep -w {} | wc -l".format(grafana_port)
             (count, err) = self.__execute_command(cmd_check_port)
             if err:
                 return self.__failure("ERROR Occured with netstat command! {}".format(err))
-
-            tries_limit = 0
-            available = True
-            if int(count) > 0:
-                # Assign a random port
-                while available:
-                    grafana_port = str(random.randrange(1100, 8000))
-                    cmd_check_port = "netstat -lanetu | grep -x {} | wc -l".format(grafana_port)
-                    (count_val, err) = self.__execute_command(cmd_check_port)
-                    if tries_limit<10:
-                        if int(count_val) > 0:
-                            tries_limit = tries_limit + 1
-                            continue
-                        if int(count_val) == 0:
-                            available =  False
-                            break
-                    else:
-                        return self.__failure("Maximum try exceeded Port ain't avaialbe, plz restart the service or free up some port!!")
+            if int(count) != 0:
+                return self.__failure("Port {} is not free to use and so unable to start grafana".format(grafana_port))
 
             return_val = subprocess.call("sed -i 's/http_port = [0-9]*/http_port = {}/g' /etc/grafana/grafana.ini".format(grafana_port) , shell=True)
             if return_val != 0:
                 return self.__failure("Grafana Port Not Intialized Error occured!!")
 
-            url = str(self.__te_controller_obj.get_daemon_ip()) + ":" + grafana_port
-
             cmd = "service grafana-server start"
             (out, err) = self.__execute_command(cmd)
             if not(err):
-                return self.__success("Grafana Service Started ,Hit this url ( {} ) on your browser, Enter User name and Password as 'admin' on login page ".format(url))
+                url = str(self.__te_controller_obj.get_daemon_ip()) + ":" + grafana_port
+                return self.__success("Grafana service is running at {} with creds: admin / admin ".format(url))
             else:
-                self.lgr.debug("Grafana server failed to start {}".format(err))
+                self.lgr.error("Grafana server failed to start {}".format(err))
                 self.__failure("Grafana server failed to start {}".format(err))
 
 
@@ -2342,6 +2324,8 @@ def parse_args():
             help='Port for postgres to bind')
     parser.add_argument('-zp','--zmq_port',type=str, required=True,
         help='Port for zmq to bind')
+    parser.add_argument('-gp','--grafana_port',type=str, required=True,
+            help='Port for grafana to bind')
     parser.add_argument('-lp','--logpath',type=str, default='/tmp/',
             help='Log Path for TE')
     parser.add_argument('-ll','--loglevel',type=int, default=10,
@@ -2354,7 +2338,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def dump(te_daemon_ip, nginx_port, redis_port, flask_port, postgres_port, zmq_port, \
+def dump(te_daemon_ip, nginx_port, redis_port, flask_port, postgres_port, zmq_port, grafana_port, \
     stat_collect_interval, stat_dump_interval, loglevel):
     tedatajson = {
         'te_daemon_ip'          : te_daemon_ip,
@@ -2363,6 +2347,7 @@ def dump(te_daemon_ip, nginx_port, redis_port, flask_port, postgres_port, zmq_po
         'flask_port'            : flask_port,
         'postgres_port'         : postgres_port,
         'zmq_port'              : zmq_port,
+        'grafana_port'          : grafana_port,
         'stat_collect_interval' : stat_collect_interval,
         'stat_dump_interval'    : stat_dump_interval,
         'logpath'               : logpath,
@@ -2381,14 +2366,15 @@ if __name__ == '__main__':
     flask_port = args.flask_port
     postgres_port = args.postgres_port
     zmq_port = args.zmq_port
+    grafana_port = args.grafana_port
     stat_collect_interval = args.stat_collect_interval
     stat_dump_interval = args.stat_dump_interval
     logpath = args.logpath
     loglevel = args.loglevel
 
 
-    dump(te_daemon_ip, nginx_port, redis_port, flask_port, postgres_port, zmq_port, \
+    dump(te_daemon_ip, nginx_port, redis_port, flask_port, postgres_port, zmq_port, grafana_port, \
         stat_collect_interval, stat_dump_interval, loglevel)
     flask_obj = FlaskApplicationWrapper(te_daemon_ip, flask_port, redis_port, nginx_port, \
-        postgres_port, zmq_port, stat_collect_interval, stat_dump_interval, logpath, loglevel)
+        postgres_port, zmq_port, grafana_port, stat_collect_interval, stat_dump_interval, logpath, loglevel)
     flask_obj.run()
