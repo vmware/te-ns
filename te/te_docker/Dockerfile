@@ -78,12 +78,14 @@ RUN chmod 0644 /etc/cron.d/cron_logrotate_te_logs
 RUN crontab /etc/cron.d/cron_logrotate_te_logs
 
 COPY te_docker/requirements.txt /tmp/
-RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade "pip < 21.0"
 RUN pip3 install --requirement /tmp/requirements.txt
 
 COPY te_docker/setup_postgres.sh /tmp/
 RUN chmod 755 /tmp/setup_postgres.sh
 RUN /tmp/setup_postgres.sh
+
+COPY open_source_licenses.tar.bz2 /
 
 COPY te_docker/te.conf /etc/nginx/sites-available/default
 COPY te_docker/postgres_grafana_config.yaml /etc/grafana/provisioning/datasources/

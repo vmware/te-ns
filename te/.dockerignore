@@ -17,3 +17,4 @@
 !te_docker/grafana_dashboard_config.yaml
 !te_docker/tcp_client_metrics_dashboard.json
 !te_swagger.json
+!open_source_licenses.tar.bz2
