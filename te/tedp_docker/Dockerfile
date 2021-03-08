@@ -52,8 +52,10 @@ RUN apt update && \
 
 # python related requirements
 COPY te/tedp_docker/requirements.txt /tmp/
-RUN pip3 install --upgrade pip
+RUN pip3 install --upgrade "pip < 21.0"
 RUN pip3 install --requirement /tmp/requirements.txt
+
+COPY te/open_source_licenses.tar.bz2 /
 
 # service file for te_stats_collector
 RUN echo "[Unit] \n\
