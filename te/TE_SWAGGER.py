@@ -47,6 +47,7 @@ SWAGGERUI_BLUEPRINT = get_swaggerui_blueprint(
     }
 )
 app.register_blueprint(SWAGGERUI_BLUEPRINT, url_prefix=SWAGGER_URL)
+print(app.root_path)
 
 
 @app.route('/api/setup_te')
@@ -54,6 +55,7 @@ def setup_te():
     controller_ip = request.args['te_controller_ip']
     user = request.args['user']
     password = request.args.get('passwd', None)
+    dockerhub_repo = request.args.get('dockerhub_repo', 'projects.registry.vmware.com/tens/te:v2.0')
 
     te_controller_obj= { 'host': controller_ip , 'user': user , 'passwd': password }
 
@@ -78,8 +80,7 @@ def setup_te():
         return {"status" : False, "statusmessage" : "python not installed in TE controller"}
 
     tens_te_obj = TensTE(te_controller_obj)
-    response = tens_te_obj.setup_te(repo_ip=input_args.ip, repo_path=input_args.repo_path,
-            path_to_python_file_to_copy=os.path.dirname(os.path.abspath(__file__)))
+    response = tens_te_obj.setup_te(dockerhub_repo=dockerhub_repo)
 
     if response.get('status', False):
         flask_port = response.get('statusmessage', {}).get('flask', None)
@@ -93,18 +94,13 @@ def setup_te():
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-rp','--repo_path', type=str, required=False, default='stable-repo',
-        help = 'Repo path to build up the TE')
     parser.add_argument('-fp','--flask_port',type=int, required=False, default=4000,
         help='flask port where swagger UI will run')
-    parser.add_argument('-ip', '--ip', type=str, required=True, help='IP for te repo')
 
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     input_args = parse_arguments()
-    repo_path = input_args.repo_path
     flask_port = input_args.flask_port
-    ip = input_args.ip
     app.run(host="0.0.0.0", port=flask_port)

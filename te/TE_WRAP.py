@@ -178,7 +178,6 @@ class TensTE():
         else:
             return None
 
-
     def __exec_cmd_remote(self, cmd, ssh):
         stdin, stdout, stderr = ssh.exec_command(cmd)
         err = stderr.readlines()
@@ -186,28 +185,18 @@ class TensTE():
             return self.__ERR, err
         return self.__OUT, stdout.readlines()
 
-    def __exec_cmd_local(self, cmd):
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        out, err = proc.communicate()
-        # Both Python 2 & 3 compliant
-        if out is not None:
-            out = out.decode('utf-8')
-        if err is not None:
-            err = err.decode('utf-8')
-        return (out, err)
-
     def __kill_setup_te(self, ssh, time_to_wait):
         ssh.close()
         lgr.error("TE didn't come up even after waiting for {}".format(time_to_wait))
 
-    def __checkIfContainerIsUp(self, DICT_OF_SERVICES, maxTolerableDelay, maxRetry, ssh):
+    def __checkIfContainerIsUp(self, DICT_OF_SERVICES, maxTolerableDelay, ssh):
         failedService = []
         cmd = "which netstat"
         (type, listOut) = self.__exec_cmd_remote(cmd, ssh)
         if(type == self.__ERR or not(bool(listOut))):
             return False, "Please install netstat in remote TE Controller machine"
 
-        for i in range(maxRetry):
+        for i in range(maxTolerableDelay):
             failedService = []
             for service, port in DICT_OF_SERVICES.items():
                 cmd = "netstat -lanet | grep %s | wc -l" %(port)
@@ -219,275 +208,38 @@ class TensTE():
                         failedService.append((service, port))
                 except:
                     return False, "Unable to start container. %s" %listOut
-            time.sleep(maxTolerableDelay/maxRetry)
+            time.sleep(1)
             print('.')
             if not failedService:
                 self.__te_controller['hostport'] = DICT_OF_SERVICES['flask']
                 return True, DICT_OF_SERVICES
         return False, "Unable to bring services ports: %s" %str(failedService)
 
-    def __setup_te_from_docker_file(self, pathToTrafficEngine, stat_collect_interval, \
-        stat_dump_interval, maxTolerableDelay, maxRetry, logpath, loglevel):
-        DICT_OF_SERVICES = {"flask"    : "5000",
-                            "nginx"    : "5001",
-                            "grafana"  : "5002",
-                            "redis"    : "6379",
-                            "postgres" : "5432",
-                            "zmq"      : "5555"}
-        host = self.__te_controller['host']
-        uname = self.__te_controller.get('user', 'root')
-        pwd = self.__te_controller.get('passwd', None)
-        self.TE_IMAGE_ID = None
 
-        buildImages = {
-            'TE' : {
-                'docker_file_name'    : 'te_docker.tar',
-                'image_name'          : 'te:v2.0',
-                'container_name'      : 'tev2.0',
-                'path_to_docker_file' : os.path.join(pathToTrafficEngine, "te/te_docker/Dockerfile"),
-                'path_to_base_dir'    : os.path.join(pathToTrafficEngine, "te/"),
-                'repo_name'           : 'te'
-            },
-            'TE_DP' : {
-                'docker_file_name'    : os.path.join(pathToTrafficEngine, 'te/tedp_docker.tar'),
-                'image_name'          : 'tedp:v2.0',
-                'image_name_bin'     : 'tedp_bin:v2.0',
-                'container_name'      : 'tedpv2.0',
-                'path_to_docker_file' : os.path.join(pathToTrafficEngine, 'te/tedp_docker/Dockerfile'),
-                'path_to_docker_file_bin' : \
-                    os.path.join(pathToTrafficEngine, "te/tedp_docker/tedp_bin_builder.dockerfile"),
-                'path_to_base_dir'    : os.path.join(pathToTrafficEngine, ''),
-                'repo_name'           : 'tedp'
-            }
-        }
+    @__retry_wrapper
+    def setup_te(self, dockerhub_repo="projects.registry.vmware.com/tens/te:v2.0", \
+            stat_collect_interval=15, stat_dump_interval=15, \
+            logpath='/tmp/', loglevel=10, maxTolerableDelay=60):
+        """
+        Bring up the TE Controller in the host machine as a docker container as specified in the constructor argument
 
-        def __update_free_port():
-            assignedPorts = []
-            cmd = "which netstat"
-            (type, listOut) = self.__exec_cmd_remote(cmd, ssh)
-            if(type == self.__ERR or not(bool(listOut))):
-                return False, "Please install netstat in remote TE Controller machine"
-            cmd = "netstat -ltn | awk '{print $4}' | grep '[0-9]' | cut -d ':' -f2  | uniq"
-            (type, listOut) = self.__exec_cmd_remote(cmd, ssh)
-            if type == self.__ERR:
-                return False, "Unable to get used up port in remote machine %s" %str(listOut)
+        Args:
+            dockerhub_repo: str, optional (Defaults to projects.registry.vmware.com/tens/te:v2.0
+                Dockerhub repo path for Traffic Engine Image
+            stat_collect_interval: int, default 15s
+                How often must the stats in Client must be push to TE Controller.
+            stat_dump_interval: int, default 15s
+                How often must the stats in Client must be dumped from datapath process.
+            logpath: str, default '/tmp'
+                Log path to write logs in TE Controller docker
+            loglevel: int, default 10
+                Python Log Level to write logs in TE Controller docker
+            maxTolerableDelay: int, default 10
+                Maximum delay to wait before the TE docker image comes up
 
-            #Find a random port for every servicea
-            listOut = [s.replace("\n","") for s in listOut]
-            for service, port in DICT_OF_SERVICES.items():
-                randomPort = str(randrange(1100, 8000))
-                counter = 0
-
-                # If the port of interest is already available, grab it
-                if port not in listOut and port not in assignedPorts:
-                    assignedPorts.append(port)
-                    continue
-
-                while randomPort in assignedPorts or randomPort in listOut:
-                    randomPort = str(randrange(1100, 8000))
-                    counter += 1
-                    if counter % 10 == 0:
-                        print("Unable to find a random available port even after 10 more tries")
-                        mustExit = int(input("Please enter 1 to continue a further search or 0 to abort and debug manually"))
-                        if not(mustExit):
-                            return False, "Unable to find a random available port even after 10 more tries"
-                assignedPorts.append(randomPort)
-                DICT_OF_SERVICES[service] = randomPort
-
-            print("pre-occupied ports in controller machine were {}".format(listOut))
-            print("Chosen ports for services are {}".format(DICT_OF_SERVICES))
-            return True, None
-
-        def __clean():
-            cmd = "docker container prune -f && \
-                    docker image prune -f"
-            (out, err) = self.__exec_cmd_local(cmd)
-            print("PRUNING THE CONTAINERS AND IMAGES")
-
-        def __getCurrentImageID(type):
-            if(type == "TE"):
-                cmd = "docker images | grep -w te | awk '{print $3}'"
-            elif(type == "TE_DP"):
-                cmd = "docker images | grep -w tedp | awk '{print $3}'"
-            else:
-                print("IMPROPER TYPE PASSED. SHOULD NEVER GET THE MESSAGE. xxxx FATAL xxxx")
-                return
-            (out, err) = self.__exec_cmd_local(cmd)
-            if(err is not None):
-                return (True, out)
-            else:
-                return (False, err)
-
-        def __performDockerSave(type):
-            cmd = "docker save -o " + os.path.join(pathToTrafficEngine, "te", buildImages[type]['docker_file_name']) +\
-                    " " + buildImages[type]['image_name']
-            print("PERFORMING A DOCKER SAVE IN LOCAL MACHINE USING CMD='%s'" %cmd)
-            (out, err) = self.__exec_cmd_local(cmd)
-            if err:
-                print("Unable to do a docker save and generate checksum. ERROR:" + str(err))
-                return False
-            return True
-
-        def __buildDocker(type, image_id=None):
-            '''
-                Checks for the current image ID
-                Does a docker build
-                Checks for the image id again
-                If image ID has changed, performs a docker save
-            '''
-
-            status, oldImageID = __getCurrentImageID(type)
-            if not status:
-                print("Error while trying to find image ID of {}: {}".format(type, oldImageID))
-                return False
-
-            cmd = ""
-            if type == "TE_DP":
-                cmd = "docker build -t {} -f {} {} && ".format(buildImages[type]['image_name_bin'],
-                    buildImages[type]['path_to_docker_file_bin'],
-                    buildImages[type]['path_to_base_dir'])
-
-            cmd += "docker build -t " + buildImages[type]['image_name'] + " -f " + \
-                buildImages[type]['path_to_docker_file'] + " " + buildImages[type]['path_to_base_dir']
-
-            if image_id:
-                cmd += " --build-arg IMAGE_ID={}".format(image_id)
-
-            print("PERFORMING A DOCKER BUILD OF %s IN LOCAL MACHINE USING CMD '%s'" %(type, cmd))
-
-            (out, err) = self.__exec_cmd_local(cmd)
-            if(err is None):
-                output = out.split("\n")
-                if(len(output) < 3):
-                    print("ERROR IN DOCKER BUILD OF {} and output={}".format(type, output))
-                    return
-                buildList, tagList, _ = output[-3:]
-                imageID = buildList.split(" ")[-1]
-                imageNameProduced = tagList.split(" ")[-1]
-                if(imageNameProduced != buildImages[type]['image_name']):
-                    print("Error in building Docker. Dockerfile Problem", output[-3:])
-                    return False
-
-            status, newImageID = __getCurrentImageID(type)
-            if not status:
-                print("Error while trying to find image ID of {}: {}".format(type, newImageID))
-                return False
-
-            if(newImageID != oldImageID or newImageID is None):
-                if(not(__performDockerSave(type))):
-                    return False
-
-            self.TE_IMAGE_ID = newImageID
-            return True
-
-        #Do a prune of containers and images to free up disk in local machine
-        __clean()
-
-        #Building Docker Image Of TE_DP and doing a 'docker save' if the build has altered
-        if(not(__buildDocker("TE_DP"))):
-            return
-
-        (out, err) = self.__exec_cmd_local("docker images -q -a tedp:v2.0")
-        tedp_image_id = out.replace("\n", "")
-
-        if(not(__buildDocker("TE", tedp_image_id))):
-            return
-
-        #Making SSH Connection to the TE-Controller Machine
-        print("Establishing a ssh conn with %s on user %s with pwd: %s" %(host, uname, pwd) )
-        logging.getLogger("paramiko").setLevel(logging.ERROR)
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        if pwd:
-            ssh.connect(host, username=uname, password=pwd)
-        else:
-            ssh.connect(host, username=uname)
-
-        #Check if docker is installed (else install it)
-        cmd = "docker -v"
-        type, listOut = self.__exec_cmd_remote(cmd, ssh)
-        if(type == self.__ERR):
-            print("INSTALLING DOCKER AND NET-TOOLS IN REMOTE MACHINE")
-            cmd = ' apt-get update && \
-            		apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common && \
-            		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - && \
-            		add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \
-             		apt-get update && \
-            		apt-get install -y --force-yes docker-ce && \
-            		service docker restart && \
-                    service redis stop && \
-            		apt-get install net-tools'
-            type, listOut = self.__exec_cmd_remote(cmd, ssh)
-            if(type == self.__ERR):
-                print("Unable to install docker and nettools. ERROR: %s " %str(listOut))
-                return
-
-
-        #Check if a container of the tag is running if so stop it
-        print("WARNING: REMOVING ANY EXISTING RUNNING TE-CONTROLLER CONTAINER")
-        cmd = "docker ps -a | grep -w " + buildImages["TE"]["container_name"] + " | awk '{ print $1 }' | xargs -I {} docker rm -f {}"
-        type, listOut = self.__exec_cmd_remote(cmd, ssh)
-        if(type == self.__ERR):
-            print("Unable to remove the running containers of the image. ERROR: %s " %str(listOut))
-            return
-
-        #Check if the image IDs matches
-        cmd = "docker images | grep -w %s" %self.TE_IMAGE_ID
-        type, listOut = self.__exec_cmd_remote(cmd, ssh)
-        if(type == self.__ERR):
-            print("Unable to get existing TE images. ERROR: %s " %str(listOut))
-            return
-
-        #Image ID is not matching
-        if(listOut == []):
-            print("IMAGES IN LOCAL AND REMOTE MACHINES ARE NOT THE SAME")
-            cmd = "docker image prune -f && docker images | grep -w " + \
-                    buildImages["TE"]["repo_name"] + \
-                    " | awk '{ print $3 }' | xargs -I {} docker rmi -f {}"
-
-            type, listOut = self.__exec_cmd_remote(cmd, ssh)
-            scp = SCPClient(ssh.get_transport())
-            scp.put(os.path.join(pathToTrafficEngine, "te", buildImages["TE"]["docker_file_name"]), '~/')
-
-            cmd = "docker images"
-            type, listOut = self.__exec_cmd_remote(cmd, ssh)
-
-            #Load the container
-            print("PERFORMING A DOCKER LOAD IN REMOTE MACHINE")
-            cmd='docker load -i %s' %os.path.join('~/' ,buildImages["TE"]["docker_file_name"])
-            (type, listOut) = self.__exec_cmd_remote(cmd, ssh)
-            expectedOutput = r'Loaded image: te:v2.0'
-            isMatching = re.match(expectedOutput, listOut[-1])
-            if(type == self.__ERR or isMatching is None):
-                print("Unable to load the image. ERROR: %s " %str(listOut))
-                return
-
-        status, message = __update_free_port()
-        if(not(status)):
-            return {'status':status, 'statusmessage':message}
-        cmd = "docker run --privileged -d -it --name %s --net=host -v /tmp/:/te_host/ -v $HOME/.ssh/:/root/.ssh/"\
-               "-e PYTHONUNBUFFERED=0 -e IPADRESS=%s -e FLASK_PORT=%s -e REDIS_PORT=%s "\
-               "-e NGINX_PORT=%s -e POSTGRES_PORT=%s -e ZMQ_PORT=%s -e GRAFANA_PORT=%s "\
-               "-e STAT_COLLECT_INTERVAL=%d -e STAT_DUMP_INTERVAL=%d "\
-               "-e LOGPATH=%s -e LOGLEVEL=%d %s"\
-               %(buildImages["TE"]["container_name"], host, \
-                DICT_OF_SERVICES['flask'], DICT_OF_SERVICES['redis'], DICT_OF_SERVICES['nginx'],
-                DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'], DICT_OF_SERVICES['grafana'],
-                stat_collect_interval, stat_dump_interval, logpath, loglevel,
-                buildImages["TE"]["image_name"])
-
-        print("DOCKER RUN CMD=%s" %cmd)
-        (type, listOut) = self.__exec_cmd_remote(cmd, ssh)
-        if(type == self.__ERR):
-            print("Unable to start container in remote. ERROR: %s " %str(listOut))
-            return
-
-        status, message = self.__checkIfContainerIsUp(DICT_OF_SERVICES, maxTolerableDelay, maxRetry, ssh)
-        ssh.close()
-        return {'status':status, 'statusmessage':message}
-
-    def __setup_te_from_repo(self, repo_details, stat_collect_interval, stat_dump_interval, \
-        maxTolerableDelay, maxRetry, logpath, loglevel):
+        Returns:
+            dict: status and statumessage describing the status of bringing up the Controller
+        """
 
         EXIT_STATUS = {
                 10 : "Unable to find docker",
@@ -503,6 +255,8 @@ class TensTE():
                 20  : "Unable to find free port even after several tries",
                 21  : "Unable to find netstat command",
                 22  : "Unable to find both systemctl and service commands",
+                23 : "docker pull command failed",
+                24 : "docker run command failed",
                 200 : "Success",
                 404 : "Fatal: unknown reason"
         }
@@ -520,11 +274,11 @@ class TensTE():
 
         # SCPCLient takes a paramiko transport as an argument
         scp = SCPClient(ssh.get_transport())
-        fileToSCP = os.path.join(repo_details['path_to_python_file_to_copy'],'GET_AND_RUN_DOCKER_IMAGE.py')
+        fileToSCP = os.path.join(os.path.dirname(__file__), 'GET_AND_RUN_DOCKER_IMAGE.py')
         scp.put(fileToSCP, 'GET_AND_RUN_DOCKER_IMAGE.py')
-        cmd = "python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -ip %s -p %s -b %s -t TE -h_ip %s \
-            -ct %d -dt %d -lp %s -ll %d" %(repo_details['ip'], repo_details['port'], repo_details['path'], \
-            host, stat_collect_interval, stat_dump_interval, logpath, loglevel)
+        cmd = "python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -b %s -t TE -h_ip %s \
+            -ct %d -dt %d -lp %s -ll %d" %(dockerhub_repo, host, stat_collect_interval, \
+            stat_dump_interval, logpath, loglevel)
 
         stdin, stdout, stderr = ssh.exec_command(cmd)
         print("Executing command = '%s'" %cmd)
@@ -553,67 +307,9 @@ class TensTE():
                 if count == 3:
                     break
 
-            status, message = self.__checkIfContainerIsUp(DICT_OF_SERVICES, maxTolerableDelay, maxRetry, ssh)
+            status, message = self.__checkIfContainerIsUp(DICT_OF_SERVICES, maxTolerableDelay, ssh)
             ssh.close()
             return {'status':status, 'statusmessage':message}
-
-
-    @__retry_wrapper
-    def setup_te(self, pathToTrafficEngine=None, repo_ip='10.79.171.71', repo_port='80', \
-    repo_path=None, stat_collect_interval=15, stat_dump_interval=15, logpath='/tmp/', loglevel=10,
-    maxTolerableDelay=60, path_to_python_file_to_copy=None):
-        """
-        Bring up the TE Controller in the host machine as a docker container as specified in the constructor argument
-
-        Args:
-            pathToTrafficEngine: str, optional (Either pathToTrafficEngine or repo_path; not both)
-                Path to local `te` folder to build repo from scratch
-            repo_path: str, optional (Either pathToTrafficEngine or repo_path; not both)
-                HTTP get path to wget the docker image from the TE Controller.
-            path_to_python_file_to_copy: str, optional(To be given compulsarily with repo_path)
-                Local path to `GET_AND_RUN_DOCKER_IMAGE.py` file to bring up TE Controller from repo
-            repo_ip: string, default '10.52.0.185', optional(To be given compulsarily with repo_path)
-                IP reachable to wget the docker image from the TE Controller.
-            repo_port: str, default '80', optional(To be given compulsarily with repo_path)
-                Port reachable to wget the docker image from the TE Controller.
-            stat_collect_interval: int, default 15s
-                How often must the stats in Client must be push to TE Controller.
-            stat_dump_interval: int, default 15s
-                How often must the stats in Client must be dumped from datapath process.
-            logpath: str, default '/tmp'
-                Log path to write logs in TE Controller docker
-            loglevel: int, default 10
-                Python Log Level to write logs in TE Controller docker
-            maxTolerableDelay: int, default 10
-                Maximum delay to wait before the TE docker image comes up
-
-        Returns:
-            dict: status and statumessage describing the status of bringing up the Controller
-        """
-
-        if pathToTrafficEngine is None and repo_path is None:
-            print("Please provide with either the path to Traffic Engine Code Repository or provide with repo name to pull the docker image from")
-
-        elif pathToTrafficEngine is not None and repo_path is not None:
-            print("You have provided both the path to Traffic Engine Code Repository and repo name to pull the docker image from. Please specify one")
-
-        elif pathToTrafficEngine is not None:
-            return self.__setup_te_from_docker_file(pathToTrafficEngine, stat_collect_interval, \
-                stat_dump_interval, maxTolerableDelay, int(maxTolerableDelay), logpath, loglevel)
-
-        elif repo_path is not None:
-            repo_path = os.path.join('/',repo_path,'')
-            repo_details = {'ip':repo_ip, 'port':str(repo_port), 'path':repo_path, 'path_to_python_file_to_copy':path_to_python_file_to_copy}
-            print("TE Docker Image is hosted in %s" %repo_details)
-            if path_to_python_file_to_copy is None:
-                return {'status':False, 'statusmessage':'Passed None as path_to_python_file_to_copy'}
-            if repo_ip is None:
-                return {'status':False, 'statusmessage':'Passed None as IP'}
-            if repo_port is None:
-                return {'status':False, 'statusmessage':'Passed None as Port'}
-            return self.__setup_te_from_repo(repo_details, stat_collect_interval, \
-                stat_dump_interval, maxTolerableDelay, int(maxTolerableDelay), logpath, loglevel)
-
 
     @__retry_wrapper
     def setup_tedp(self, te_dp_dict):

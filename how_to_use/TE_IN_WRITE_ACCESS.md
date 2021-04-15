@@ -1,22 +1,26 @@
+WRITE ACCESS APPROACH
+=====================
+
+* Pre-requisites to be installed in the user end
+    - python
+    - pip installed paramiko scp
+
+* Pre-requisites to be installed in the TENS Controller and Client machines
+    - community edition of docker version (preferrably 18.06+)
+    - wget
+    - python
+    - pip installed requests library
+
+
 A sample and simple get start of TE-NS
 ======================================
 
-* TE-NS works as a single controller, multi-client traffic generator based on SDN paradigm
-* The User interacts with the controller to start / stop / update traffic from the clients
-* Pre-requisites on the user end
-  - python3
-  - pip3 installed paramiko, flask-swagger-ui, scp
-* Pre-requisites on the client and controller VMs
-  - community edition of docker version (preferrably 18.06+)
-  - wget
-  - python3
-  - python3 / pip3 requests library
-* To setup TE-NS Controller from UI, hit (REPO_IP):(REPO_PORT)/swagger
+* To setup TE-NS Controller from UI (if setup using setup_te_setup_dashboard.sh), hit (REPO_IP):(REPO_PORT)/swagger
   Eg: http://127.0.0.1:4000/swagger
 * To use TE-NS further, visit (TE_CONTROLLER_IP):(FLASK_PORT)/swagger
   eg: http://127.0.0.1:5000/swagger
 * To use from the ipython3 / python3 shell
-  - To use from python shell one would need TE_WRAP.py and GET_AND_RUN_DOCKER_IMAGE.py
+  - To use from python shell one would need TE_WRAP.py
   - The files are available in $git_repo/te (or) (TE-NS-REPO)
 ```
 In [1]: from TE_WRAP import *
@@ -47,14 +51,13 @@ In [5]: te_controller = {'host': '127.0.0.1',
 In [6]: te_dp_dict = {
     '127.0.0.1': {'instance_profile': {'tedp_inst1': 1},
                     'passwd': 'tens123',
-                    'tag': 'telocal1',
                     'user': 'root'}}
 
 #MAKING AVI TE OBJECT
 In [7]: te_ns_obj = TensTE(te_controller)
 
 #SETUP TE
-In [8]: te_ns_obj.setup_te(repo_ip='127.0.0.1', repo_path='te-ns-repo', path_to_python_file_to_copy='.')
+In [8]: te_ns_obj.setup_te()
 TE Docker Image is hosted in {'ip': '127.0.0.1', 'port': '80', 'path_to_python_file_to_copy': '/root/ws/avi-dev/test/TrafficEngine/te', 'path': '/stable-repo/'}
 Executing command = 'python /root/GET_AND_RUN_DOCKER_IMAGE.py -w /root/ -ip 127.0.0.1 -p 80 -b /stable-repo/ -t TE -h_ip 127.0.0.1             -ct 15 -dt 15 -lp /tmp/ -ll 10'
 Exit code is 200
