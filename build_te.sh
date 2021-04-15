@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #**********************************************************************************************
 # Traffic Emulator for Network Services
 # Copyright 2020 VMware, Inc
@@ -29,14 +31,23 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
+set -e
 
-[Unit]
-Description=Bring Up Swagger UI to perform Setup TE from %i repo
+GREEN='\033[0;32m'
+NC='\033[0m'
+PATH_TO_TE=$(git rev-parse --show-toplevel)
 
-[Service]
-Type=simple
-Restart=always
-RestartSec=1
-Environment=PORT=4000
-Environment=IP=NULL
-ExecStart=/bin/bash /etc/systemd/system/te-swagger_service_script.sh start %i
+#BUILD AND SAVE TEDP DOCKER
+docker container prune -f && docker image prune -f
+docker build -t tedp_bin:v2.0 -f $PATH_TO_TE/te/tedp_docker/tedp_bin_builder.dockerfile $PATH_TO_TE/
+docker build -t tedp:v2.0 -f $PATH_TO_TE/te/tedp_docker/Dockerfile $PATH_TO_TE/
+docker save -o $PATH_TO_TE/te/tedp_docker.tar tedp:v2.0
+IMAGE_ID_TEDP=`docker images -q -a tedp:v2.0`
+echo -e "${GREEN}Perfomed a Docker save of TE_DP Docker ${NC}"
+
+#BUILD AND SAVE TE DOCKER
+docker build -t te:v2.0 --build-arg IMAGE_ID=$IMAGE_ID_TEDP -f $PATH_TO_TE/te/te_docker/Dockerfile $PATH_TO_TE/te/
+echo -e "${GREEN} Built TE Docker Image ${NC}"
+
+# Remove the tedp:v2.0 saved image
+rm -f $PATH_TO_TE/te/tedp_docker.tar

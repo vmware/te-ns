@@ -53,6 +53,8 @@ EXIT_CHECKSUM                  = 19
 EXIT_NO_PORT                   = 20
 EXIT_NO_NETSTAT_CMD            = 21
 EXIT_NO_SYSCTL_OR_SERVICE_CMD  = 22
+EXIT_DOCKERHUB_DOWNLOAD        = 23
+EXIT_DOCKERRUN_COMMAND_FAILED  = 24
 EXIT_SUCCESS                   = 200
 EXIT_FAILURE                   = 404
 
@@ -194,7 +196,7 @@ class DOCKER_INITIALIZER:
                                     DICT_OF_SERVICES['postgres'], DICT_OF_SERVICES['zmq'], \
                                     DICT_OF_SERVICES['grafana'], self.stat_collect_interval, \
                                     self.stat_dump_interval, self.te_logpath, self.te_loglevel,
-                                    self.docker_detials["image_name"])
+                                    self.basePath)
             print("flask=%s" %DICT_OF_SERVICES['flask'])
             print("postgres=%s" %DICT_OF_SERVICES['postgres'])
             print("nginx=%s" %DICT_OF_SERVICES['nginx'])
@@ -279,6 +281,16 @@ class DOCKER_INITIALIZER:
                 sys.exit(EXIT_FREE_PORTS)
 
         self.lgr.debug("Prepared the machine")
+        return True
+
+    def getDockerImage(self):
+        cmd = "docker pull {}".format(self.basePath)
+        self.lgr.debug("Running command '{}'".format(cmd))
+        (out, err) = self.__exec_cmd(cmd)
+        if err:
+            self.lgr.debug("ERROR in downloading dockerhub image %s" %str(err))
+            sys.exit(EXIT_DOCKERHUB_DOWNLOAD)
+        self.__docker_load_reqd = False
         return True
 
     def getTarImage(self):
@@ -376,6 +388,9 @@ class DOCKER_INITIALIZER:
             cmd = self.docker_detials['run_cmd']
             self.lgr.debug("PERFORMING A DOCKER RUN USING CMD=%s" %cmd)
             (out, err) = self.__exec_cmd(cmd)
+            if err:
+                self.lgr.error("Unable to execute docker run command! ERROR: %s " %str(out))
+                sys.exit(EXIT_DOCKERRUN_COMMAND_FAILED)
 
             # Post run command, the docker is expected to be up
             cmd = "docker ps | grep {} | wc -l".format(self.docker_detials['container_name'])
@@ -394,7 +409,11 @@ class DOCKER_INITIALIZER:
             sys.exit(EXIT_RUN_CONTAINER)
 
     def run(self):
-        if self.isAllEssentialsInstalled() and self.prepareBed() and self.getTarImage() and self.loadAndStartTheContainer():
+        if typeOfDocker == "TE":
+            download_image = self.getDockerImage
+        else:
+            download_image = self.getTarImage
+        if self.isAllEssentialsInstalled() and self.prepareBed() and download_image() and self.loadAndStartTheContainer():
             self.lgr.debug("SUCCESS")
             sys.exit(EXIT_SUCCESS)
         else:
@@ -405,11 +424,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-w','--path_to_docker',type=str, required=True,
             help='Path to save the docker tar')
-    parser.add_argument('-ip','--ip',type=str, required=True,
+    parser.add_argument('-ip','--ip',type=str, required=False, default="127.0.0.1",
             help='IP to pull the tar file from')
     parser.add_argument('-my_ip','--my_ip',type=str, required=False, default="127.0.0.1",
             help='IP of the machine running this script')
-    parser.add_argument('-p','--nginx_port',type=str, required=True,
+    parser.add_argument('-p','--nginx_port',type=str, required=False, default="5001",
             help='Nginx Port of remote machine serving the tar')
     parser.add_argument('-fp','--flask_port',type=str, required=False, default="5000",
             help='Flask port to talk to controller from data path')

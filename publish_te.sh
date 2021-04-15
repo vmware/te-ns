@@ -33,44 +33,13 @@
 
 set -e
 
-if [ "$EUID" -ne 0 ]
-    then echo "Please run as root"
-    exit 1
-fi
-
-if [[ $# -ne 4 && $# -ne 5 ]] ; then
+if [[ $# -ne 1 ]] ; then
     echo "Improper Input"
-    echo " $0 <PATH TO NGINX ROOT> <REPO NAME> <REPO_IP> <PATH TO traffic_engine.tar.gz> <SWAGGER_PORT>(optional -- default 4000)"
+    echo " $0 <docker_repo>"
     exit 1
 fi
 
-GREEN='\033[0;32m'
-NC='\033[0m'
-NGINX_ROOT=$1
-REPO_NAME=$2
-TARGET=$1/$2
-REPO_IP=$3
-PATH_TO_TE_TAR=$4
+docker_repo=$1
 
-if [[ $# -eq 5 ]] ; then
-    SWAGGER_PORT=$5
-else
-    SWAGGER_PORT=4000
-fi
-
-PWD=$(pwd)
-
-rm -rf ${TARGET}
-mkdir -v ${TARGET}
-echo "tar -xzvf ${PATH_TO_TE_TAR} -C ${TARGET}"
-tar -xzvf ${PATH_TO_TE_TAR} -C ${TARGET}
-
-#START SERVICE TO DEPLOY TE CONTROLLER
-mv ${TARGET}/te-swagger* /etc/systemd/system/
-echo "export IP='${REPO_IP}'" > /etc/te-swagger@${REPO_NAME}.conf
-echo "export PORT=${SWAGGER_PORT}" >> /etc/te-swagger@${REPO_NAME}.conf
-echo "export NGINX_ROOT=${NGINX_ROOT}" >> /etc/te-swagger@${REPO_NAME}.conf
-systemctl daemon-reload
-systemctl restart te-swagger@${REPO_NAME}.service
-sleep 3
-systemctl status te-swagger@${REPO_NAME}.service
+docker tag te:v2.0 $docker_repo
+docker push $docker_repo

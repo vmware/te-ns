@@ -31,6 +31,13 @@
                         "description" : "TE controller password",
                         "in" : "query",
                         "type": "string"
+                    },
+                    {
+                        "name" : "dockerhub_repo",
+                        "description" : "Dockerhub repo name hosting TE image",
+                        "in" : "query",
+                        "type": "string",
+                        "default" : "projects.registry.vmware.com/tens/te:v2.0"
                     }
 		],
                 "produces": ["application/json"],
