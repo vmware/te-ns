@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #**********************************************************************************************
 # Traffic Emulator for Network Services
 # Copyright 2020 VMware, Inc
@@ -29,21 +31,39 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-start()
-{
-    echo "Executing 'python3 ${BASE_PATH}/TE_SWAGGER.py -fp $PORT'"
-    python3 ${BASE_PATH}/TE_SWAGGER.py -fp $PORT
-}
+set -e
 
-envfile="/etc/te-swagger.conf"
-if [ -f "$envfile" ]
-then
-    echo "$envfile found, sourcing.."
-    source $envfile
+if [ "$EUID" -ne 0 ]
+    then echo "Please run as root"
+    exit 1
 fi
 
-case "$1" in
-    "start")
-    start
-    ;;
-esac
+GREEN='\033[0;32m'
+NC='\033[0m'
+NGINX_ROOT=$1
+
+if [[ $# -eq 1 ]] ; then
+    SWAGGER_PORT=$1
+else
+    SWAGGER_PORT=4000
+fi
+
+#START SERVICE TO DEPLOY TE CONTROLLER
+base_path=$(git rev-parse --show-toplevel)
+te_path=$base_path/te/
+cp ${te_path}/te-swagger* /etc/systemd/system/
+echo "export PORT=${SWAGGER_PORT}" > /etc/te-swagger.conf
+echo "export BASE_PATH=${te_path}" >> /etc/te-swagger.conf
+systemctl daemon-reload
+systemctl restart te-swagger.service
+
+sleep 5
+echo "Checking if service is active"
+is_active=$(systemctl is-active te-swagger.service)
+if [[ ${is_active} != "active" ]]; then
+    echo "Unable to bring up te-swagger.service service"
+    echo "Please check journalctl -u te-swagger.service"
+    exit 1
+fi
+
+echo "Go the to UI at <IP>:${SWAGGER_PORT}/swagger !!!"

@@ -206,7 +206,7 @@ class RedisConnector:
                 self.wait_for_pids(pid_list)
             else:
                 self.lgr.info("========= SLEEPING FOR 5s DUE TO FAILURE =========")
-                time.sleep(5)
+                time.sleep(1)
 
 if __name__ == "__main__":
     env_vars = os.environ
