@@ -1,9 +1,9 @@
 # Traffic Emulator for Network Service (TENS)
 
-> Traffic Engine is a powerful and skillful horse having a separate data and control planes aimed at providing with extensive abilities to stress, validate, and report metrics and errors regarding various load balancing and server functionalities emulating multiple Browser sessions, clients, connections and requests at layers of L4 and L7 in a distributed fashion across multiple computes with a single endpoint of control.
+> Traffic Emulator for Network Service (henceforth abbreviated as TENS) is a distributed traffic generator tool having a separate data and control planes aimed at providing with extensive abilities to stress, validate, and report metrics and errors regarding various load balancing and server functionalities emulating multiple Browser sessions, clients, connections and requests at layers of L4 and L7 in a distributed fashion across multiple computes with a single endpoint of control.
 
 ## Why TENS?
-* There are existing tools which does bits and pieces of what Traffic Engine can do, but have different ways of operation. Traffic Engine operates as a single end point with uniformly exposed APIs to orchestrate and validate traffic.
+* There are existing tools which does bits and pieces of what TENS can do, but have different ways of operation. TENS operates as a single end point with uniformly exposed APIs to orchestrate and validate traffic.
 * Existing open source tools have different set of limitations, and none has all the features to validate a fully blown load balancer
 * Commercial tools are expensive
 
@@ -25,7 +25,7 @@
 * Ability to emulate uploads and downloads of large number of UDP datagrams at L4, with multiple concurrent connections.
 
 ## Libraries and Utilities Used
-Traffic Engine functions with specific set of libraries and we are thankful to the maintainers and active contributors to the below mentioned libraries and utilities.
+TENS functions with specific set of libraries and we are thankful to the maintainers and active contributors to the below mentioned libraries and utilities.
 
 |   Libraries   |   Version  |       | Utilities  |
 | :-----------: | :--------: | :---: | :--------: |
@@ -45,12 +45,12 @@ Traffic Engine functions with specific set of libraries and we are thankful to t
 * Make the datapath and statistics collector process
 	* `make all`
 
-## How to access Traffic Engine
+## How to access TENS
 * As of today one can access the codes from the repository of github.`
-	* Using the code, one can build and use Traffic Engine with 1 Controller and as many datapaths as required
+	* Using the code, one can build and use TENS with 1 Controller and as many datapaths as required
 
-## How to get a fully fledged Traffic Engine (With Controller)
-* Traffic Engine has 2 parts to it. One is the Traffic Engine Controller and the other is Traffic Engine Datapath
+## How to get a fully fledged TENS (With Controller)
+* TENS has 2 parts to it. One is the TENS Controller and the other is TENS Datapath
 * The Controller acts as a single point of access which exposes various apis to start, stop, update and get metrics from the data path process
 * To get a sample run, please refer to SAMPLE-RUN.md in home directory:
        <work-space>/SAMPLE-RUN.md
@@ -98,14 +98,14 @@ Traffic Engine functions with specific set of libraries and we are thankful to t
 
 ## Appendix
 * In order for the datapath to work at maximum efficiency add the following knob in /etc/sysctl.conf
-  * ```
+  ```
     net.ipv4.tcp_tw_recycle = 1
     net.ipv4.tcp_tw_reuse = 1
     net.ipv4.ip_local_port_range = 2048 65000
   ```
   * Run `sysctl -p` to reflect it.
 
-* If a fully fledged Traffic Engine is deployed (With Controller), please make sure the following are installed in the bare metal / VM
+* For a fully fledged TENS (with Controller), make sure the following are installed in the bare metal / VM
   * wget
   * python
   * python requests library
