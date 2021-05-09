@@ -80,20 +80,16 @@ Out[9]:
 In [10]: te_ns_obj.setup_tedp(te_dp_dict)
 Out[10]: {u'status': True, u'statusmessage': u'Launched TEDPs'}
 
-#CONNECT TE AND TEDP
-In [11]: te_ns_obj.connect(te_dp_dict)
-Out[11]: {u'status': True, u'statusmessage': u'Connected all TEs and TEDPs’}
-
 #START TRAFFIC
-In [12]: te_ns_obj.start(resource_config, session_config, instanceProfileConfig, te_dp_dict)
-Out[12]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
+In [11]: te_ns_obj.start(resource_config, session_config, instanceProfileConfig, te_dp_dict)
+Out[11]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
 
 #AT LEAST WAIT FOR 15 SECS BEFORE GETTING THE 1ST METRICS
-In [13]: time.sleep(15)
+In [12]: time.sleep(15)
 
 #GET VIP METRICS
-In [14]: te_ns_obj.get_vip_metrics("TOTAL")
-Out[14]:
+In [13]: te_ns_obj.get_vip_metrics("TOTAL")
+Out[13]:
 {u'status': True,
  u'statusmessage': {u'vip=http://www.example.com': {u'bytes_download': 2042256.0,
    u'connections': 160.0,
@@ -130,14 +126,14 @@ Out[14]:
    u'tput': 136150.4}}}
 
 #Updating Configs
-In [15]: r = {
+In [14]: r = {
     u'default-get-post-ratio': u'1:0',
      u'get-profiles': {u'g1': [{u'uri': u'128b.txt'}]},
      u'http-version': u'1.1',
      u'vip-list': [{u'get-profile': u'g1', u'vip': u'http://www.example.com'}]
 }
 
-In [16]: s = {
+In [15]: s = {
     u'connection-range': [1, 1],
      u'cycle-type': u'restart',
      u'num-sessions': 4,
@@ -145,23 +141,23 @@ In [16]: s = {
      u'session-type': u'MaxPerf'
 }
 
-In [17]: resource_config = {'res' : r}
+In [16]: resource_config = {'res' : r}
 
-In [18]: session_config = {'ses'  :s}
+In [17]: session_config = {'ses'  :s}
 
 #GETTING CURRENT TE TIME FOR FILTERING METRICS
-In [19]: te_ns_obj.get_current_te_time()
-Out[19]: {u'status': True, u'statusmessage': u'2019-05-27 09:51:09'}
+In [18]: te_ns_obj.get_current_te_time()
+Out[18]: {u'status': True, u'statusmessage': u'2019-05-27 09:51:09'}
 
 #UPDATING TRAFFIC
-In [20]: te_ns_obj.update_config(resource_config, session_config, instanceProfileConfig, te_dp_dict)
-Out[20]:
+In [19]: te_ns_obj.update_config(resource_config, session_config, instanceProfileConfig, te_dp_dict)
+Out[19]:
 {u'status': True,
  u'statusmessage': {u'Update': {u'All TEDPs Updated': {u'127.0.0.1': {u'tedp_inst1': 1}}}}}
 
 #GETTING METRICS FOR ONLY THE UPDATED CONFIGS
-In [21]: te_ns_obj.get_vip_metrics("TOTAL",filter_ts_range=['2019-05-27 09:51:09',None])
-Out[21]:
+In [20]: te_ns_obj.get_vip_metrics("TOTAL",filter_ts_range=['2019-05-27 09:51:09',None])
+Out[20]:
 {u'status': True,
  u'statusmessage': {u'vip=http://www.example.com': {u'bytes_download': 2110080.0,
    u'connections': 168.0,
@@ -197,6 +193,6 @@ Out[21]:
    u'tcp_failures': 0.0,
    u'tput': 140672.0}}}
 
-In [22]: te_ns_obj.stop()
-Out[22]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
+In [21]: te_ns_obj.stop()
+Out[21]: {u'status': True, u'statusmessage': {u'127.0.0.1': {u'tedp_inst1': 1}}}
 ```
