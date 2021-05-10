@@ -48,3 +48,17 @@ pip3 install flask flask_swagger_ui paramiko flask-swagger-ui scp
 export FLASK_PORT=4000
 [sudo] ./setup_te_setup_dashboard.sh $FLASK_PORT
 ```
+
+For configuring insecure registries, do the following:
+============================================
+
+* Set the following flag in the /etc/docker/daemon.json file on the client:
+```
+{
+    "insecure-registries": ["registry-ip:port"]
+}
+```
+* Restart Docker
+```
+$ sudo systemctl restart docker
+```
