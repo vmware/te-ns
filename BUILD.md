@@ -55,7 +55,7 @@ For configuring insecure registries on the client, do the following:
 * Set the following flag in the /etc/docker/daemon.json file on the client:
 ```
 {
-    "insecure-registries": ["DOCKER_REGISTRY_IP:DOCKER_REGISTRY_PORT"]
+    "insecure-registries": ["REGISTRY_IP:DOCKER_REGISTRY_PORT"]
 }
 ```
 
@@ -67,5 +67,7 @@ $ sudo systemctl restart docker
 To pull te image from the newly created registry:
 ============================================
 ```
-docker pull DOCKER_REGISTRY_IP:DOCKER_REGISTRY_PORT/te:v2.0
+export REGISTRY_IP=<Registry-IP-address>   
+export DOCKER_REGISTRY_PORT=6666
+docker pull $REGISTRY_IP:$DOCKER_REGISTRY_PORT/te:v2.0
 ```
