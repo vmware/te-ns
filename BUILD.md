@@ -48,3 +48,26 @@ pip3 install flask flask_swagger_ui paramiko flask-swagger-ui scp
 export FLASK_PORT=4000
 [sudo] ./setup_te_setup_dashboard.sh $FLASK_PORT
 ```
+
+For configuring insecure registries on the client, do the following:
+============================================
+
+* Set the following flag in the /etc/docker/daemon.json file on the client:
+```
+{
+    "insecure-registries": ["REGISTRY_IP:DOCKER_REGISTRY_PORT"]
+}
+```
+
+* Restart Docker
+```
+$ sudo systemctl restart docker
+```
+
+To pull te image from the newly created registry:
+============================================
+```
+export REGISTRY_IP=<Registry-IP-address>   
+export DOCKER_REGISTRY_PORT=6666
+docker pull $REGISTRY_IP:$DOCKER_REGISTRY_PORT/te:v2.0
+```
