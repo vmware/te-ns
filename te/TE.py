@@ -478,6 +478,12 @@ class FlaskApplicationWrapper:
 
         return ((output, problematicHost) if getStdOut else problematicHost)
 
+    def __is_rq_established(self, iter_of_tedps):
+        for tedp in iter_of_tedps:
+            if tedp not in self.__tedp_config:
+                self.lgr.debug("RQ object is not created for {}".format(tedp))
+                return False
+        return True
 
     def __verify_task_status(self, typeOfTask, max_tolerable_delay):
 
@@ -769,6 +775,12 @@ class FlaskApplicationWrapper:
         try:
             problematicHost = []
             CURRENT_TASK = task
+            if not self.__is_rq_established(te_dp_hosts):
+                if isinstance(te_dp_hosts, list):
+                    return False, "Unconnected tedps", te_dp_hosts
+                else:
+                    return False, "Unconnected tedps", list(te_dp_hosts)
+
             for host_ip in te_dp_hosts:
                 enqueuedCall = False
 
@@ -995,6 +1007,9 @@ class FlaskApplicationWrapper:
             enqueuedHosts = []
             resultDict = {}
 
+            if not self.__is_rq_established(tedp_hosts):
+                return False, "Unconnected tedps", tedp_hosts
+
             for host in tedp_host:
                 argsPassed = {'my_ip':host, 'remote_ip':scp_ip, 'remote_user':scp_user, \
                         'remote_pwd':scp_passwd, 'remote_path':scp_path, \
@@ -1136,8 +1151,14 @@ class FlaskApplicationWrapper:
         if not isinstance(te_dp_dict, dict):
             return self.__failure("te_dp_dict must be a dict")
 
+        force = convert(jsonContent.get('force', False))
+
         te_dp_hosts = {}
-        host_ips_to_setup = set(te_dp_dict.keys()) - self.__setup_completed_tedps
+
+        if force:
+            host_ips_to_setup = set(te_dp_dict.keys())
+        else:
+            host_ips_to_setup = set(te_dp_dict.keys()) - self.__setup_completed_tedps
 
         invalid_input = {}
         for host_ip in host_ips_to_setup:
@@ -1196,11 +1217,14 @@ class FlaskApplicationWrapper:
         if jsonContent['ip'] not in self.__setup_completed_tedps:
             return self.__failure("Unauthenticated. Use connect to authenticate {}".format(jsonContent['ip']))
 
-        if jsonContent['ip'] not in self.__tedp_config.keys():
-            self.__connect_lock.acquire()
-            self.__tedp_config[jsonContent['ip']] = TE_DP_CONFIG(jsonContent['ip'], jsonContent['cpus'], \
-                self.TE_BROKER_HANDLE, self.lgr, self.__te_postgres_object)
-            self.__connect_lock.release()
+        if jsonContent['ip'] in self.__tedp_config.keys():
+            obj = self.__tedp_config[jsonContent['ip']]
+            del obj
+
+        self.__connect_lock.acquire()
+        self.__tedp_config[jsonContent['ip']] = TE_DP_CONFIG(jsonContent['ip'], jsonContent['cpus'], \
+            self.TE_BROKER_HANDLE, self.lgr, self.__te_postgres_object)
+        self.__connect_lock.release()
 
         result = {
             "broker" : self.__te_app.config['BROKER_URL'],
@@ -1331,6 +1355,8 @@ class FlaskApplicationWrapper:
                 cmd = "nohup /opt/te/clean_tedp.sh &"
                 status, msg, result = self.__run_mgmt_command(list(self.__setup_completed_tedps),
                         global_cmd=cmd, task="CLEAN_TEDP")
+            else:
+                status, msg, result = False, "setup_tedp step incomplete", ""
 
         if status:
             self.__connect_completed_tedps.clear()
@@ -1356,8 +1382,6 @@ class FlaskApplicationWrapper:
 
     def __spawn_or_update_tedps(self, resource_config, sessionConfig, instanceProfileConfig, \
             tedp_dict, max_tolerable_delay, is_cert_replaced, updateFlag=False, verify_result=True):
-        #AK: What does the below line mean??
-        # Multiple Src IPs Code will break, because the current implementation depends on TEDP_INFO, which is not yet updated in the connect step in this design due to obvious reasons
         try:
             if updateFlag:
                 CURRENT_TASK = "UPDATE"
@@ -1368,6 +1392,9 @@ class FlaskApplicationWrapper:
             numberOfCallsMade = 0
             enqueuedHosts = []
             resultDict = defaultdict(dict)
+
+            if not self.__is_rq_established(tedp_dict.keys()):
+                return False, "Unconnected tedps", list(tedp_dict.keys())
 
             for host_ip, instance_profile in tedp_dict.items():
                 enqueuedCall = False
@@ -1635,6 +1662,9 @@ class FlaskApplicationWrapper:
         resource_insuffcient_hosts = {}
         dict_after_validation = {}
 
+        if not self.__is_rq_established(te_dp_dict.keys()):
+            return False, "Unconnected tedps", list(te_dp_dict.keys())
+
         for host_ip, host_properties in te_dp_dict.items():
             if host_properties is None or host_properties.get('instance_profile',None) is None:
                 continue
@@ -1671,7 +1701,7 @@ class FlaskApplicationWrapper:
 
         self.lgr.debug("start_api Called")
 
-        isRequestValid = self.__checkForRequiredArgument(jsonContent, 
+        isRequestValid = self.__checkForRequiredArgument(jsonContent,
             ['te_dp_dict','resource_config','session_config','instanceProfileConfig'])
         if isRequestValid is not None:
             return isRequestValid
@@ -1753,6 +1783,10 @@ class FlaskApplicationWrapper:
 
             CURRENT_TASK = "STOP"
             resultDict = {}
+
+            if not self.__is_rq_established(paramDict.keys()):
+                return False, "Unconnected tedps", list(paramDict.keys())
+
             for host_ip, listOfPid in paramDict.items():
                 resultDict[host_ip] = self.__tedp_config[host_ip].stop_te_dp_helper(stop_te_dp, \
                     {'listOfPid':listOfPid})
@@ -1841,6 +1875,10 @@ class FlaskApplicationWrapper:
         elif by_host_and_instance_profile_tag is None and by_instance_profile_tag is None:
             change_state_to_init = True
             te_dp_dict = self.__te_controller_obj.get_te_dp()
+
+            if not self.__is_rq_established(te_dp_dict.keys()):
+                return False, "Unconnected tedps", list(te_dp_dict.keys())
+
             for host_ip in te_dp_dict.keys():
                 listOfPidsRunningProfile = self.__tedp_config[host_ip].get_pid_of_running_tedps()
                 if(bool(listOfPidsRunningProfile)):
@@ -1855,6 +1893,9 @@ class FlaskApplicationWrapper:
             possible, reason = self.__are_all_tedps_connected(by_host_and_instance_profile_tag)
             if(not(possible)):
                 return self.__failure({"Unable to stop on unconnected tedp machines":reason})
+
+            if not self.__is_rq_established(by_host_and_instance_profile_tag.keys()):
+                return False, "Unconnected tedps", list(by_host_and_instance_profile_tag.keys())
 
             for host_ip, profile_map in by_host_and_instance_profile_tag.items():
                 if profile_map is None or profile_map['instance_profile'] is None:
@@ -2034,6 +2075,8 @@ class FlaskApplicationWrapper:
         if modifiedProfiles is None:
             return self.__failure(traceback.format_exc())
 
+        if not self.__is_rq_established(te_dp_dict.keys()):
+            return False, "Unconnected tedps", list(te_dp_dict.keys())
 
         self.lgr.debug("modifiedRes=%s" %str(modifiedRes))
         self.lgr.debug("modifiedSes=%s" %str(modifiedSes))
