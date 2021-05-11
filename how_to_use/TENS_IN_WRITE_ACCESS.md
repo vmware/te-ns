@@ -58,8 +58,7 @@ In [7]: te_ns_obj = TensTE(te_controller)
 
 #SETUP TE
 In [8]: te_ns_obj.setup_te()
-TE Docker Image is hosted in {'ip': '127.0.0.1', 'port': '80', 'path_to_python_file_to_copy': '/root/ws/avi-dev/test/TrafficEngine/te', 'path': '/stable-repo/'}
-Executing command = 'python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -b projects.registry.vmware.com/tens/te:v2.0 -t TE -h_ip 127.0.0.1 -ct 15 -dt 15 -lp /tmp/ -ll 10'
+Executing command = 'python ~/GET_AND_RUN_DOCKER_IMAGE.py -w ~/ -b projects.registry.vmware.com/tens/te:v2.0 -t TE -h_ip 127.0.0.1             -ct 15 -dt 15 -lp /tmp/ -ll 10'
 Exit code is 200
 flask ==> 5000
 postgres ==> 5432
@@ -70,11 +69,11 @@ nginx ==> 5001
 .
 .
 .
-Out[9]:
+.
+Out[8]:
 {'status': True,
- 'statusmessage': {u'flask': u'5000',
-  u'nginx': u'5001',
-  u'postgres': u'5432'}}
+ 'statusmessage': {u'flask': u'5000', u'nginx': u'5001', u'postgres': u'5432'}}
+ 
 
 #SETUP TEDP
 In [10]: te_ns_obj.setup_tedp(te_dp_dict)
