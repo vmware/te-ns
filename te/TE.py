@@ -753,7 +753,7 @@ class FlaskApplicationWrapper:
             te_dp_hosts[host_ip] = {'user': details.get('user','root')}
             passwd = details.get('passwd', None)
             if passwd:
-                te_dp_hosts[host_ip]['password'] = password
+                te_dp_hosts[host_ip]['password'] = passwd
 
         client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
         status, msg, result = self.__get_cpu_count_tedps(te_dp_hosts, client)
