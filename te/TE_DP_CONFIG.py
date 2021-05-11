@@ -114,6 +114,8 @@ class TE_DP_CONFIG:
         return rqQueue(queue_name, connection=TEbrokerHandle, default_timeout=180)
 
     def __del__(self):
+        for cpu, te_r_queue in self.__cpu_to_queue_mapping.items():
+            te_r_queue.empty()
         del self.__host_ip
         del self.__STATES
         del self.__host_ip
