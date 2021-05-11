@@ -312,7 +312,7 @@ class TensTE():
             return {'status':status, 'statusmessage':message}
 
     @__retry_wrapper
-    def setup_tedp(self, te_dp_dict):
+    def setup_tedp(self, te_dp_dict, force=False):
         """
         Sets up the Docker Container for TE_DP Clients by pulling the docker image from TE Controller
 
@@ -322,6 +322,8 @@ class TensTE():
                     host_ip : Keys to te_dp_dict (Client mgmt IP) whose values includes:
                         user : User to the host_ip with passwordless docker privilege
                         passwd : Password to the host_ip's above user
+            force: bool, defaults to False
+                Force setting up of tedp hosts -- cleans up all state associated with the tedp
         Example:
             te_dp_dict = {
                 '1.1.1.1' : {'passwd': '', 'user': 'root'},
@@ -333,7 +335,7 @@ class TensTE():
         """
         url = self.__url('setup_tedp')
         if url is not None:
-            resp = requests.post(url, json={'te_dp_dict': te_dp_dict})
+            resp = requests.post(url, json={'te_dp_dict': te_dp_dict, 'force': force})
             Jdata = resp.json()
             if resp.status_code not in [200, 201]:
                 raise Exception('POST setup_tedp/ {} {}'.format(resp.status_code, Jdata))
