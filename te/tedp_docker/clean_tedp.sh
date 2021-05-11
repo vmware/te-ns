@@ -33,7 +33,11 @@
 
 ps aux | grep te_dp | grep -v grep | awk '{print $2}' | xargs --no-run-if-empty kill -9
 ls -d /opt/te/* | grep core | xargs rm -rf
-ls -d /tmp/ramcache/* | xargs rm -rf
-ls -d /tmp/TE%* | xargs rm -rf
+if [[ $(ls /tmp/ramcache/ | wc -l) -gt 0 ]]; then
+    ls -d /tmp/ramcache/* | xargs rm -rf
+fi
+if [[ $(ls /tmp/ | grep "TE%" | wc -l) -gt 0 ]]; then
+    ls -d /tmp/TE%* | xargs rm -rf
+fi
 # Kill just the stats_collector which would force restart "rq worker"
 ps aux | grep te_stats_collector | grep -v grep | awk '{print $2}' | xargs --no-run-if-empty kill -9
