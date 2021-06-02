@@ -46,7 +46,7 @@ requests==2.21.0
 rq==0.13.0
 ssh2-python==0.17.0
 sysv-ipc==1.0.0
-urllib3==1.24.2
+urllib3==1.26.5
 jsonpickle==0.9.4
 numpy==1.16.5
 zmq==0.0.0
