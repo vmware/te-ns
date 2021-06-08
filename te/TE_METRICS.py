@@ -1305,7 +1305,8 @@ class TE_POSTGRES:
             metric_json['latency-error-percentage'] = "%s%%" \
                 %str(round(abs(mean_lat - round(np.percentile(values, 50), 5)) * 100 / mean_lat, 5))
 
-    def __get_nested_dict(self, keys_list, metrics, is_named, table_name, result=None, get_latency_stats=False):
+    def __get_nested_dict(self, keys_list, metrics, is_named, table_name, result=None,
+                          get_latency_stats=False, get_res_ses_config=False):
         # Not a really a pythonic way to do things!
         # Any changes to the logic is welcome!
         fmt = '%Y-%m-%d %H:%M:%S'
@@ -1346,7 +1347,12 @@ class TE_POSTGRES:
                             metric_json = {}
                             for key in self.__metric_keys[table_name]:
                                 if data[key]:
-                                    metric_json[key] = float(data[key])
+                                    if get_res_ses_config:
+                                        # Comes here only when called from query_and_get_configs
+                                        # data[key] is a dict and hence typecast it to str.
+                                        metric_json[key] = str(data[key])
+                                    else:
+                                        metric_json[key] = float(data[key])
                                 else:
                                     metric_json[key] = 0.0
                             if is_get_latency_stats_needed:
@@ -1612,8 +1618,8 @@ class TE_POSTGRES:
                 res_table_orm, _ = self.__query_db(db_connection, sql_statement)
                 if(res_table_orm is None):
                     return False, "Unable to retreive res_hash(es)"
-                res_hash_result = self.__get_nested_dict(["res_hash"], res_table_orm, is_named, \
-                                "resource_configs")
+                res_hash_result = self.__get_nested_dict(["res_hash"], res_table_orm, is_named,
+                                    "resource_configs", get_res_ses_config=True)
 
             if ses_hash_list is not None:
                 if(bool(ses_hash_list)):
@@ -1631,7 +1637,7 @@ class TE_POSTGRES:
                 if(ses_table_orm is None):
                     return False, "Unable to retreive ses_hash(es)"
                 ses_hash_result = self.__get_nested_dict(["ses_hash"], ses_table_orm, is_named,
-                                "session_configs")
+                                    "session_configs", get_res_ses_config=True)
 
             return True, {"res" : res_hash_result, "ses" : ses_hash_result}
         except:
