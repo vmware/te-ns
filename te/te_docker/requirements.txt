@@ -42,7 +42,7 @@ psycopg2==2.7.7
 psycopg2-binary==2.8.2
 redis==3.0.1
 redis-queue==0.5
-requests==2.21.0
+requests==2.25.1
 rq==0.13.0
 ssh2-python==0.17.0
 sysv-ipc==1.0.0
