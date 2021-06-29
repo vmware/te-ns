@@ -29,50 +29,60 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-#!/bin/sh
-apt update  # To get the latest package lists
+#!/bin/bash
 cd /tmp/
+sed -i '/deb-src/s/^# //' /etc/apt/sources.list && apt update
 apt install automake libtool m4 -y
 apt install libjson0 libjson0-dev -y
 apt build-dep curl -y
 apt install wget -y
-apt install build-essential nghttp2 libnghttp2-dev libssl-dev -y
+apt install build-essential nghttp2 libnghttp2-dev -y
+
+###################### Download all first ######################
 
 #OPENSSL 1.1.1a
 wget --no-check-certificate https://www.openssl.org/source/openssl-1.1.1a.tar.gz
 tar -zxf openssl-1.1.1a.tar.gz && rm openssl-1.1.1a.tar.gz
-cd openssl-1.1.1a
-./config && make -j8 && make install
-mv /usr/bin/openssl ~/tmp
-ln -s /usr/local/bin/openssl /usr/bin/openssl
-ldconfig
 
 #ZeroMQ
 echo "deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/ ./" >> /etc/apt/sources.list
-wget --no-check-certificate https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | sudo apt-key add
+wget --no-check-certificate https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | apt-key add
 apt-get install -y libzmq3-dev
 
 #LIBCURL
 wget --no-check-certificate https://curl.haxx.se/download/curl-7.67.0.tar.gz
-tar -xvf curl-7.67.0.tar.gz
+tar -xvf curl-7.67.0.tar.gz && rm curl-7.67.0.tar.gz
+
+#LIBUV
+wget --no-check-certificate https://dist.libuv.org/dist/v1.27.0/libuv-v1.27.0.tar.gz
+tar xvf libuv-v1.27.0.tar.gz && rm libuv-v1.27.0.tar.gz
+
+###################### purge libssl1.0 ######################
+apt remove --purge -y libssl-dev libssl-doc libssl1.0.0 openssl
+
+###################### Install them ######################
+
+#OPENSSL 1.1.1a
+cd openssl-1.1.1a
+./config && make -j$(nproc) && make install
+ldconfig
+cd /tmp/
+rm -rf openssl*
+
+#LIBCURL
 cd curl-7.67.0
-#./configure --with-nghttp2 --prefix=/usr/local --with-ssl=/usr/local/ssl
 #For openssl 1.1.1 support (TLSv1.3)
-./configure --with-nghttp2 --prefix=/usr/local --with-default-ssl-backend=openssl
-make -j8
-make install
+./configure --with-nghttp2 --prefix=/usr/local --with-default-ssl-backend=openssl --enable-ipv6
+make -j$(nproc) && make install
 ldconfig
 cd /tmp/
 rm -rf curl*
 
 #LIBUV
-wget --no-check-certificate https://dist.libuv.org/dist/v1.27.0/libuv-v1.27.0.tar.gz
-tar xvf libuv-v1.27.0.tar.gz
 cd libuv-v1.27.0/
 ./autogen.sh
 ./configure
-make -j8
-make install
+make -j$(nproc) && make install
+ldconfig
 cd /tmp/
 rm -rf libuv*
-ldconfig
