@@ -15,10 +15,6 @@ WRITE ACCESS APPROACH
 A sample and simple get start of TE-NS
 ======================================
 
-* To setup TE-NS Controller from UI (if setup using setup_te_setup_dashboard.sh), hit (REPO_IP):(REPO_PORT)/swagger
-  Eg: http://127.0.0.1:4000/swagger
-* To use TE-NS further, visit (TE_CONTROLLER_IP):(FLASK_PORT)/swagger
-  eg: http://127.0.0.1:5000/swagger
 * To use from the ipython3 / python3 shell
   - To use from python shell one would need TE_WRAP.py
   - The files are available in $git_repo/te (or) (TE-NS-REPO)
