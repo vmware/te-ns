@@ -47,6 +47,7 @@ RUN apt update && \
     apt install -y python3-pip --reinstall && \
     apt install -y sshpass && \
     apt install -y logrotate && \
+    apt install -y libffi-dev && \
     apt install -y cron && \
     apt install -y supervisor
 

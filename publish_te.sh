@@ -41,5 +41,6 @@ fi
 
 docker_repo=$1
 
+docker login projects.registry.vmware.com
 docker tag te:v2.0 $docker_repo
 docker push $docker_repo
