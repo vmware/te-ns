@@ -41,7 +41,6 @@ ARG lib64_path=/lib/x86_64-linux-gnu
 # basic library and pkg install
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt update && \
-    apt install -y libffi-dev  && \
     apt install -y cmake && \
     apt install -y libboost-dev
 
