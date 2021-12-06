@@ -74,17 +74,19 @@ RUN mkdir /tmp/ramcache && chmod -R 755 /tmp/ramcache
 
 # logrotate for csv of process in ramcache and log files in /tmp/
 RUN echo "/tmp/ramcache/*.csv { \n\
+su root root \n\
 size 5M \n\
-rotate 2 \n\
+rotate 5 \n\
 compress \n\
-delaycompress \n\
+copytruncate \n\
 missingok \n\
 }\n\
 /tmp/*.log { \n\
-size 256M \n\
-rotate 2 \n\
+su root root \n\
+size 100M \n\
+rotate 5 \n\
 compress \n\
-delaycompress \n\
+copytruncate \n\
 missingok \n\
 }\n" > /etc/logrotate.d/te-logs && chmod 0644 /etc/logrotate.d/te-logs
 
