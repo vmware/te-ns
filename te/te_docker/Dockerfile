@@ -59,6 +59,7 @@ RUN apt-get update && \
     apt-get install -y vim && \
     apt-get install -y sshpass && \
     apt-get install -y logrotate && \
+    apt install -y libffi-dev && \
     wget --no-check-certificate https://dl.grafana.com/oss/release/grafana_7.0.1_amd64.deb && \
     dpkg -i grafana_7.0.1_amd64.deb && \
     rm grafana_7.0.1_amd64.deb
