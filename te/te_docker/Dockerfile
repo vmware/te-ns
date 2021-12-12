@@ -64,10 +64,11 @@ RUN apt-get update && \
     rm grafana_7.0.1_amd64.deb
 
 RUN echo "/tmp/*.log { \n\
-size 256M \n\
-rotate 2 \n\
+su root root \n\
+size 100M \n\
+rotate 5 \n\
 compress \n\
-delaycompress \n\
+copytruncate \n\
 missingok \n\
 }\n" > /etc/logrotate.d/te-logs
 RUN chmod 0644 /etc/logrotate.d/te-logs
