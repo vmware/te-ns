@@ -175,9 +175,6 @@ void load_random_session_data(te_session_t * session)
 void send_session_requests(te_session_t *session, unsigned int num_requests)
 {
     unsigned int iter = 0;
-    if (unlikely(is_session_config_state_stopped(session->session_cfg_p))) {
-       return;
-    }
     switch(tedp_profile) {
         case TCP:
             for(iter = 0 ; iter < num_requests ; ++iter)
@@ -295,9 +292,6 @@ void create_te_sessions(te_session_config_t *session_cfg)
 void on_session_cycle_timeout(uv_timer_t *cycle_timer)
 {
     te_session_t *session= (te_session_t *) cycle_timer->data;
-    if (unlikely(is_session_config_state_stopped(session->session_cfg_p))) {
-       return;
-    }
     te_process_session_state(session, TE_SESSION_STATE_CYCLE_END);
 }
 
@@ -553,10 +547,6 @@ void te_session_sleep(te_session_t* session) {
 
 void te_process_session_state(te_session_t * session, TE_SESSION_STATE state)
 {
-    te_session_config_t *session_cfg_p = session->session_cfg_p;
-    if (unlikely(is_session_config_state_stopped(session_cfg_p))) {
-       return;
-    }
     session->state = state;
 
     test_print("Sesssion States: id=%d, state=%d, cycle_iter=%lu, total_cycle_iter=%d\n",
