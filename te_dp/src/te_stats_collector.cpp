@@ -997,8 +997,12 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    freopen("/tmp/te_stats_collector_output.log","w",stdout);
-    freopen("/tmp/te_stats_collector_error.log","w",stderr);
+    FILE* fp;
+    fp = freopen("/tmp/te_stats_collector_output.log","w",stdout);
+    assert(fp != NULL);
+
+    fp = freopen("/tmp/te_stats_collector_error.log","w",stderr);
+    assert(fp != NULL);
 
     ifstream f(argv[1]);
     if (!f.good()) {
