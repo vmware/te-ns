@@ -823,11 +823,4 @@ void session_ramp_timer_cb(uv_timer_t*);
 void te_udp_datagram_alloc_buffer(uv_handle_t*, size_t, uv_buf_t*);
 void te_udp_on_read(uv_udp_t*, ssize_t, const uv_buf_t*, const struct sockaddr*, unsigned);
 
-
-// As of today the update is done by kill and respawn
-// Datapath in its running state will most likely be in TE_SESSION_CONFIG_STATE_START
-#define is_session_config_state_stopped(session_cfg) \
-    (session_cfg->config_state == TE_SESSION_CONFIG_STATE_STOP) ? 1 : 0
-
-//session_cfg->config_state == TE_SESSION_CONFIG_STATE_STOP;
 #endif

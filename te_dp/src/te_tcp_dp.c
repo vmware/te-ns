@@ -174,7 +174,7 @@ void dump_error_request(te_tcp_request_t *req, int fail_reason, char* header, ch
             if (req->req_type == TE_SESSION_REQ_GET) {
                 rlist = &(res_cfg->greqs[req->prof_index][req->url_index]);
             }
-            else if (req->req_type == TE_SESSION_REQ_POST) {
+            else {
                 rlist = &(res_cfg->preqs[req->prof_index][req->url_index]);
             }
             usize = rlist->request_uri.size;
@@ -190,8 +190,7 @@ void dump_error_request(te_tcp_request_t *req, int fail_reason, char* header, ch
             double thres_time;
             if (req->req_type == TE_SESSION_REQ_GET) {
                 rlist = &(res_cfg->greqs[req->prof_index][req->url_index]);
-            }
-            else if (req->req_type == TE_SESSION_REQ_POST) {
+            } else {
                 rlist = &(res_cfg->preqs[req->prof_index][req->url_index]);
             }
             thres_time = (double)rlist->request_uri.threshold_time;
@@ -217,10 +216,6 @@ void te_process_session(te_session_t *session)
     long response_code;
     te_tcp_request_t *msg_request = NULL;
     CURLcode CEcode, Ecode;
-
-    if (unlikely(is_session_config_state_stopped(session->session_cfg_p))) {
-       return;
-    }
 
     while((message = curl_multi_info_read(cm_handle, &pending))) {
         switch(message->msg) {
@@ -317,8 +312,6 @@ void te_poll_req_uv_cb(uv_poll_t *user_p, int status, int events)
     if(events & UV_WRITABLE)
         flags |= CURL_CSELECT_OUT;
 
-    assert(conn_poll_handle->session_p != NULL);
-
     rc = curl_multi_socket_action(conn_poll_handle->session_p->tcp->cm_handle, \
         conn_poll_handle->tcp_sockfd, flags, &running_handles);
     te_dump_mcode_or_die("poll_cb: te_poll_req_uv_cb", rc);
@@ -330,9 +323,6 @@ void on_session_uv_timeout(uv_timer_t *user_p)
     int running_handles;
     CURLMcode rc;
     te_session_t *session= (te_session_t *) user_p->data;
-    if (unlikely(is_session_config_state_stopped(session->session_cfg_p))) {
-        return;
-    }
     if (likely(session->tcp->cm_handle)) {
         rc = curl_multi_socket_action(session->tcp->cm_handle, CURL_SOCKET_TIMEOUT, 0, &running_handles);
         te_dump_mcode_or_die("session_uv_timeout", rc);
@@ -713,15 +703,10 @@ int curl_socket_timer_cb(CURLM *multi, long timeout_ms, void *userp)
     * It calls on_session_uv_timeout()
     */
     te_session_t *session = (te_session_t *)userp;
-    if (unlikely(is_session_config_state_stopped(session->session_cfg_p))) {
-       return 0;
-    }
     if (timeout_ms < 0) {
        uv_timer_stop(&session->tcp->cm_timer);
     }
     else {
-        if(timeout_ms == 0)
-            timeout_ms = 1;
         uv_timer_start(&session->tcp->cm_timer, on_session_uv_timeout, timeout_ms, 0);
     }
     return 0;
@@ -729,27 +714,27 @@ int curl_socket_timer_cb(CURLM *multi, long timeout_ms, void *userp)
 
 int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *user_p, void *socket_p)
 {
-    /*
-    * Please don't touch the below piece of code. IT WORKS. LEAVE IT.
-    * If it doesn't work, still leave it. A bug takes about a week to solve
-    * :""((
-    */
-    te_socket_node_t* socket_ptr_cb = (te_socket_node_t*)socket_p;
-    te_socket_node_t* socket_ptr;
     te_tcp_request_t* request;
     te_session_t* session_ptr = (te_session_t *)user_p;
     int events = 0;
     CURLMcode CEcode;
 
-    assert(session_ptr != NULL);
-    if (unlikely(is_session_config_state_stopped(session_ptr->session_cfg_p))) {
-        return 0;
-    }
-
+    // Get the request and assign the socket fd
     CEcode = curl_easy_getinfo(easy, CURLINFO_PRIVATE, &request);
     if(unlikely(CEcode != CURLM_OK))
         eprint("CURLINFO_PRIVATE, %d, %s\n",(int)CEcode, curl_easy_strerror(CEcode));
-    assert(request != NULL);
+
+    // Get the socket node if not initialized
+    te_socket_node_t* socket_ptr;
+    if (socket_p == NULL) {
+        socket_ptr = te_create_or_retrieve_tcp_socket(s, session_ptr);
+        // Create a assoc b/w sockfd and the sock_ptr
+        CEcode = curl_multi_assign(request->sessionp->tcp->cm_handle, s, socket_ptr);
+        if(CEcode != CURLM_OK)
+            eprint("curl_multi_assign, %d, %s\n",(int)CEcode, curl_easy_strerror(CEcode));
+    } else {
+        socket_ptr = (te_socket_node_t *) socket_p;
+    }
 
     /*
     * If the number of connection in the multi_handle is 1, then the call_back is called
@@ -762,29 +747,15 @@ int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *user_p, void *
         * For each connection, the callback is called for CURL_POLL_OUT once
         * Followed by it, the calls are made only for CURL_POLL_IN/CURL_POLL_REMOVE
     */
-    switch(action){
+    switch(action) {
         case CURL_POLL_IN:
         case CURL_POLL_OUT:
         case CURL_POLL_INOUT:
         {
-            if(!socket_ptr_cb)
-                socket_ptr = te_create_or_retrieve_tcp_socket(s, session_ptr);
-            else {
-                assert(session_ptr == socket_ptr_cb->session_p);
-                socket_ptr = socket_ptr_cb;
-            }
-            assert(socket_ptr->tcp_sockfd == s);
-
-            //CURL_MULTI_ASSOC creates an assoc b/w sockfd and the sock_ptr
-            CEcode = curl_multi_assign(session_ptr->tcp->cm_handle, s, socket_ptr);
-            if(CEcode != CURLM_OK)
-                eprint("curl_multi_assign, %d, %s\n",(int)CEcode, curl_easy_strerror(CEcode));
-
             if(action != CURL_POLL_IN)
                 events |= UV_WRITABLE;
             if(action != CURL_POLL_OUT)
                 events |= UV_READABLE;
-
             uv_poll_start(&socket_ptr->tcp_poll_handle, events, te_poll_req_uv_cb);
         } break;
 
@@ -795,14 +766,9 @@ int curl_socket_cb(CURL *easy, curl_socket_t s, int action, void *user_p, void *
                 * CURL_POLL_REMOVE: The specified socket/file descriptor is no longer used by libcurl.
                 * Which means we can confidantly remove the socket once the call is made
             */
-
-            //Make sure while removing the socket if it is for the particular sockfd and sesssion
-            assert(socket_ptr_cb->tcp_sockfd == s);
-            assert(socket_ptr_cb->session_p == session_ptr);
-            if(socket_ptr_cb) {
-                uv_poll_stop(&socket_ptr_cb->tcp_poll_handle);
-            }
+            uv_poll_stop(&socket_ptr->tcp_poll_handle);
         } break;
+
         default:
             abort();
     }
@@ -997,7 +963,7 @@ size_t te_header_function_cb(void *buffer, size_t size, size_t nitems, void *req
             return (nitems*size);
         }
         if (!session->tcp->pdata_exists) {
-            strncpy(session->tcp->persist_str, header, strlen(header));
+            strncpy(session->tcp->persist_str, header, strlen(session->tcp->persist_str));
             session->tcp->pdata_exists = 1;
             tprint("%d,%lu, CYCLE_1ST_RESPONSE: persist_str_update len:%d, str:%s",
                 session->id, session->cycle_iter+1,

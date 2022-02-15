@@ -158,7 +158,7 @@ class DOCKER_INITIALIZER:
             self.lgr.debug("Output of executing 'which netstat' out%s= err=%s" %(out,err))
             if(bool(err) or not(bool(out))):
                 sys.exit(EXIT_NO_NETSTAT_CMD)
-            (out, err) = self.__exec_cmd("netstat -ltn | awk '{print $4}' | grep '[0-9]' | cut -d ':' -f2  | uniq")
+            (out, err) = self.__exec_cmd("netstat -ltn | awk '{print $4}' | grep '[0-9]'| grep -o '[^:]*$' | sort | uniq")
             if(bool(err)):
                 print("Unable to get used up port in remote machine %s" %str(err))
                 return False
