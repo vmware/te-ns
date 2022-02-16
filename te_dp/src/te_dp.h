@@ -766,6 +766,7 @@ typedef struct te_resource_config_s {
     //TCP (or) CURL Params
     bool is_verbose;
     bool send_tcp_resets;       //To enable TE to send tcp resets
+    bool tcp_connect_only;       //Establish a connection and exit
     int tcp_keepalive_timeout;  //To send a keep-alive to server
     int tcp_connect_timeout;
 

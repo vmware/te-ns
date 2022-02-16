@@ -1140,6 +1140,12 @@ void te_set_curl_opts(CURL *handle, te_session_config_t *session_cfg_p, te_sessi
         if(unlikely(CEcode != CURLE_OK))
             eprint("CURLOPT_SOCKOPTFUNCTION, %d, %s\n",(int)CEcode, curl_easy_strerror(CEcode));
     }
+    //Perform connection setup and exit without data transfer
+    if (res_cfg->tcp_connect_only) {
+        CEcode = curl_easy_setopt(handle, CURLOPT_CONNECT_ONLY, 1L);
+        if(unlikely(CEcode != CURLE_OK))
+            eprint("CURLOPT_CONNECT_ONLY, %d, %s\n",(int)CEcode, curl_easy_strerror(CEcode));
+    }
 
     //Call Back to Close the socket connection
     CEcode = curl_easy_setopt(handle, CURLOPT_CLOSESOCKETFUNCTION, te_socket_close);

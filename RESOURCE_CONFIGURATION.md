@@ -46,6 +46,7 @@
 * **default-get-post-ratio** : The value specifies ratio at which the target vip must be targetted with GETs and POSTs. This value is used only if nothing is specified at the vip level. If one has to specify the ratio at vip level it must be specified using the key `get-post-profile`(Optional)
 
 * **send-tcp-resets** : Boolean specifying if the client must send RST instead of FIN, where ever applicable
+* **tcp-connect-only** : Boolean specifying if the request transfer should be skipped. Connection reuse is disabled for this case. Hence cycle-type resume is unsupported if this option is enabled.
 
 * **tcp-keepalive-timeout** : Value is seconds specifying the intervals at which TCP keep alive has to be sent. This value must be ideally be less than the TCP timeout at the server end.
   * Defaults to 20s.
@@ -104,6 +105,7 @@
 
     "tcp-keepalive-timeout" : 15,
     "send-tcp-resets"       : false,
+    "tcp-connect-only" : false,
 
     "default-get-post-ratio" : "1:1",
     "get-profiles" : {

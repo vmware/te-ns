@@ -493,6 +493,12 @@
                         "type": "boolean",
                         "format": "boolean"
                     },
+                    "tcp-connect-only": {
+                        "title": "Set to true if the request transfer should be skipped",
+                        "description" : "TCP CLIENT ONLY",
+                        "type": "boolean",
+                        "format": "boolean"
+                    },
                     "default-get-post-ratio": {
                         "title": "The ratio at which vip will be targeted with gets and posts",
                         "description" : "TCP CLIENT ONLY",

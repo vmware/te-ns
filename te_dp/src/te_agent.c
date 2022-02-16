@@ -1006,6 +1006,7 @@ void te_process_resource_config(const char* resource_config, bool is_update) {
         //TCP Defaults
         res_cfg_temp->send_tcp_resets = false;
         res_cfg_temp->tcp_keepalive_timeout = 20;
+        res_cfg_temp->tcp_connect_only = false;
 
         //Basic INIT
         te_http_url_metrics_t** url_get_metrics_profile = NULL;
@@ -1253,7 +1254,7 @@ void te_process_resource_config(const char* resource_config, bool is_update) {
                 }
 
                 //TCP Params
-                if (strstr(key,"send-tcp-reset")) {
+                if (strstr(key,"send-tcp-resets")) {
                     if (json_object_get_boolean(jvalue)) {
                         res_cfg_temp->send_tcp_resets = true;
                     }
@@ -1266,6 +1267,14 @@ void te_process_resource_config(const char* resource_config, bool is_update) {
                 }
                 if(strstr(key, "tcp-connect-timeout")) {
                     res_cfg_temp->tcp_connect_timeout = json_object_get_int(jvalue);
+                }
+                if (strstr(key,"tcp-connect-only")) {
+                    if (json_object_get_boolean(jvalue)) {
+                        res_cfg_temp->tcp_connect_only = true;
+                    }
+                    else {
+                        res_cfg_temp->tcp_connect_only = false;
+                    }
                 }
 
                 //HTTP VERSION AND PIPELINE
