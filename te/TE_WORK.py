@@ -436,6 +436,8 @@ def start_te_dp(resource_config=None, session_config=None, resource_hash=None, s
         if 'send-tcp-resets' in resconv_sort['resource-config']:
             resconv_new['send-tcp-resets']=resconv_sort['resource-config']['send-tcp-resets']
 
+        if 'tcp-connect-only' in resconv_sort['resource-config']:
+            resconv_new['tcp-connect-only']=resconv_sort['resource-config']['tcp-connect-only']
         """
         # Unsupported knobs as of today
         # Lot of the knobs can be used to simulate attacks
