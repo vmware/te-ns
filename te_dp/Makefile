@@ -43,7 +43,7 @@ DP_FLAGS = -lcurl -luv -ljson -lssl -lpthread
 
 STAT_SRC   = $(wildcard $(SRCDIR)/*.cpp)
 STAT_OBJ   = $(STAT_SRC:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
-STAT_FLAGS = -pthread -lzmq -ljson
+STAT_FLAGS = -lzmq -ljson
 STAT_BIN   = $(BINDIR)/te_stats_collector
 
 CFLAGS     = -g -O0 -Wall -I.

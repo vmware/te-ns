@@ -158,7 +158,7 @@ class RedisConnector:
         stat_collector_config = {
             "te_ip" : self.ctrl_ip,
             "my_ip" : self.ip,
-            "self.stat_collect_interval" : int(self.stat_collect_interval),
+            "collect_every" : int(self.stat_collect_interval),
             "te_zmq_port" : self.ctrl_zmq_port
         }
 

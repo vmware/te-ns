@@ -58,7 +58,7 @@ void add_vip_or_memory_metric_at_level(json_object* vip_or_memory_metrics, json_
     const char* ses_hash_c = (map_key[1]).c_str();
     const char* vip_c = (map_key[2]).c_str();
 
-        json_object *res_level, *ses_level;
+    json_object *res_level, *ses_level;
 
     if(json_object_object_get_ex(vip_or_memory_metrics, res_hash_c, &res_level)) {
         if(json_object_object_get_ex(res_level, ses_hash_c, &ses_level)) {
@@ -94,8 +94,8 @@ pair<json_object*, json_object*> te_get_vip_metrics(vector<int> q_id_vector)
     array<string, 3> vip_metric_key;
     map<array<string, 3>, map<string, double > > vip_stats;
     map<array<string, 3>, map<pair<double, double>, pair<int, double> > > bucket_stats;
-    
-    
+
+
     for(auto q_id = q_id_vector.begin(); q_id != q_id_vector.end(); ++q_id) {
 
         te_http_vip_metrics_msg_t vip_metric_msg;
@@ -115,12 +115,14 @@ pair<json_object*, json_object*> te_get_vip_metrics(vector<int> q_id_vector)
                                         vip_metric_msg.http_stats.failed_connections;
             vip_stats[vip_metric_key]["profile_type"]        = HTTP_PROFILE;
 
-            //Get all bucket metrics from 
+            //Get all bucket metrics from
             num_ses_buckets = vip_metric_msg.num_buckets;
             for(ses_bucket_counter=0; ses_bucket_counter<num_ses_buckets; ses_bucket_counter++) {
                 te_session_bucket_metrics_msg_t ses_bucket_metric_msg;
                 if(msgrcv(*q_id, &ses_bucket_metric_msg, HTTP_VIP_BUCKET_METRIC_MSG_SIZE, \
                     TE_VIP_BUCKET_METRIC_IPC_MSG, IPC_NOWAIT) == -1) {
+                    json_object_put(vip_metric);
+                    json_object_put(ses_bucket_metric);
                     return {NULL, NULL};
                 }
                 else {
@@ -158,7 +160,7 @@ pair<json_object*, json_object*> te_get_vip_metrics(vector<int> q_id_vector)
         metrics = json_object_new_object();
         for(auto j=i->second.begin(); j!=i->second.end(); j++) {
             key_c = (j->first).c_str();
-            json_object_object_add(metrics, key_c, json_object_new_double(j->second));   
+            json_object_object_add(metrics, key_c, json_object_new_double(j->second));
         }
         add_vip_or_memory_metric_at_level(vip_metric, metrics, i->first);
     }
@@ -169,7 +171,7 @@ pair<json_object*, json_object*> te_get_vip_metrics(vector<int> q_id_vector)
             metric = json_object_new_object();
             json_object_object_add(metric, "start_time", \
                 json_object_new_double(j->first.first));
-            json_object_object_add(metric, "end_time", 
+            json_object_object_add(metric, "end_time",
                 json_object_new_double(j->first.second));
             json_object_object_add(metric, "bucket", \
                 json_object_new_int(j->second.first));
@@ -181,12 +183,16 @@ pair<json_object*, json_object*> te_get_vip_metrics(vector<int> q_id_vector)
         got_bucket_metrics = true;
     }
 
-    if(got_metrics && got_bucket_metrics)
+    if(got_metrics && got_bucket_metrics) {
         return {vip_metric, ses_bucket_metric};
-    else if(got_metrics)
+    } else if(got_metrics) {
+        json_object_put(ses_bucket_metric);
         return {vip_metric, NULL};
-    else
+    } else {
+        json_object_put(vip_metric);
+        json_object_put(ses_bucket_metric);
         return {NULL, NULL};
+    }
 }
 
 json_object* te_get_server_vip_metrics(vector<int> q_id_vector) {
@@ -277,20 +283,23 @@ json_object* te_get_server_vip_metrics(vector<int> q_id_vector) {
         json_object_object_add(vip_metric, key_c, metrics);
     }
 
-    if(got_metrics)
+    if(got_metrics) {
         return vip_metric;
-    else
+    } else {
+        json_object_put(vip_metric);
         return NULL;
+    }
 }
 
-void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array<string, 5> map_keys)
+void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array<string, 5> map_keys,
+        vector<json_object*>& metrics_obj_to_clear)
 {
     const char* res_hash_c = ((map_keys)[0]).c_str();
     const char* ses_hash_c = ((map_keys)[1]).c_str();
     const char* vip_c = ((map_keys)[2]).c_str();
     const char* method_c = ((map_keys)[3]).c_str();
     const char* uri_c = ((map_keys)[4]).c_str();
-    
+
     json_object *uri_level, *method_level, *vip_level, *ses_level, *res_level;
 
     if(json_object_object_get_ex(url_metric, res_hash_c, &res_level)) {
@@ -301,6 +310,7 @@ void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array
                         json_object_object_foreach(metric, key, val) {
                             json_object_object_add(uri_level, key, val);
                         }
+                        metrics_obj_to_clear.push_back(metric);
                     }
                     else {
                         json_object_object_add(method_level, uri_c, metric);
@@ -340,11 +350,10 @@ void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array
         ses_level = json_object_new_object();
         json_object_object_add(ses_level, ses_hash_c, vip_level);
         json_object_object_add(url_metric, res_hash_c, ses_level);
-        
     }
 }
 
-array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
+array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_object*>& metrics_obj_to_clear)
 {
     te_http_url_metrics_msg_t http_url_metric_msg;
     te_udp_url_metrics_msg_t  udp_url_metric_msg;
@@ -363,11 +372,11 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
     map<array<string, 5>, vector<te_mean_variance_t> > latency_stats;
     map<array<string, 5>, map<pair<double, double>, pair<int, double> > > bucket_stats;
     map<array<string, 5>, map<string, pair<pair<time_t, time_t>, int> > > error_stats;
-    
+
     pair<double, double> url_bucket_key;
     array<string, 5> url_key;
     string error_key;
-    
+
     json_object *url_metric = json_object_new_object();
     json_object *url_bucket_metric = json_object_new_object();
     json_object *error_metrics = json_object_new_object();
@@ -423,12 +432,15 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
                       (mean * mean);
                 latency_stats[url_key].push_back({http_url_metric_msg.http_stats.resp_rcvd, mean, var});
             }
-            
+
             num_url_buckets = http_url_metric_msg.num_buckets;
             num_error_buckets = http_url_metric_msg.num_error_buckets;
             for(url_bucket_counter=0; url_bucket_counter<num_url_buckets; url_bucket_counter++) {
                 if(msgrcv(*q_id, &url_bucket_metric_msg, URL_BUCKET_METRIC_MSG_SIZE, \
                     TE_URL_BUCKET_METRIC_IPC_MSG, IPC_NOWAIT) == -1) {
+                    json_object_put(url_metric);
+                    json_object_put(url_bucket_metric);
+                    json_object_put(error_metrics);
                     return {NULL, NULL, NULL};
                 }
                 else {
@@ -445,6 +457,9 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
             for(error_counter=0; error_counter<num_error_buckets; error_counter++) {
                 if(msgrcv(*q_id, &error_metric_msg, ERROR_METRIC_MSG_SIZE, \
                     TE_ERROR_METRIC_IPC_MSG, IPC_NOWAIT) == -1) {
+                    json_object_put(url_metric);
+                    json_object_put(url_bucket_metric);
+                    json_object_put(error_metrics);
                     return {NULL, NULL, NULL};
                 }
                 else {
@@ -523,14 +538,13 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
             key_c = (j->first).c_str();
             json_object_object_add(metrics, key_c, json_object_new_double(j->second));
         }
-        add_uri_metric_at_level(url_metric, metrics, i->first);
+        add_uri_metric_at_level(url_metric, metrics, i->first, metrics_obj_to_clear);
     }
 
     //Latency Stats -- Dumping the mean and variance of latency
     double net_mean, net_var, denom;
     for(auto i=latency_stats.begin(); i!=latency_stats.end(); i++) {
         net_mean=0, denom=0, net_var=0;
-        metrics = json_object_new_object();
         for(auto j=i->second.begin(); j!=i->second.end(); j++) {
             net_mean += j->mean * j->n;
             denom += j->n;
@@ -541,9 +555,11 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
                 net_var += j->n * ( ((j->mean - net_mean)*(j->mean - net_mean)) + j->var);
             }
             net_var /= denom;
+            metrics = json_object_new_object();
             json_object_object_add(metrics, "mean_latency", json_object_new_double(net_mean));
             json_object_object_add(metrics, "var_latency", json_object_new_double(net_var));
-            add_uri_metric_at_level(url_metric, metrics, i->first);
+            add_uri_metric_at_level(url_metric, metrics, i->first, metrics_obj_to_clear);
+            //json_object_put(metrics);
         }
     }
 
@@ -557,7 +573,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
             json_object_object_add(metric, "total_time", json_object_new_double(j->second.second));
             json_object_array_add(metrics, metric);
         }
-        add_uri_metric_at_level(url_bucket_metric, metrics, i->first);
+        add_uri_metric_at_level(url_bucket_metric, metrics, i->first, metrics_obj_to_clear);
         got_bucket_metrics = true;
     }
 
@@ -574,7 +590,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
             key_c = (j->first).c_str();
             json_object_object_add(metrics, key_c, metric);
         }
-        add_uri_metric_at_level(error_metrics, metrics, i->first);
+        add_uri_metric_at_level(error_metrics, metrics, i->first, metrics_obj_to_clear);
         got_error_metrics = true;
     }
 
@@ -582,18 +598,21 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
     if(got_metrics) {
         result_array[0] = url_metric;
     } else {
+        json_object_put(url_metric);
         result_array[0] = NULL;
     }
 
     if(got_bucket_metrics) {
         result_array[1] = url_bucket_metric;
     } else {
+        json_object_put(url_bucket_metric);
         result_array[1] = NULL;
     }
 
     if(got_error_metrics) {
         result_array[2] = error_metrics;
     } else {
+        json_object_put(error_metrics);
         result_array[2] = NULL;
     }
 
@@ -648,10 +667,12 @@ json_object* te_get_memory_metrics(vector<int> q_id_vector)
         add_vip_or_memory_metric_at_level(memory_metric, metrics, i->first);
     }
 
-    if (got_metrics)
+    if (got_metrics) {
         return memory_metric;
-    else
+    } else {
+        json_object_put(memory_metric);
         return NULL;
+    }
 }
 
 json_object* te_get_ses_metrics(vector<int> q_id_vector)
@@ -724,7 +745,6 @@ json_object* te_get_ses_metrics(vector<int> q_id_vector)
 
             got_metrics = true;
         }
-        
     }
 
     for(auto i=ses_stats.begin(); i!=ses_stats.end(); i++) {
@@ -737,22 +757,22 @@ json_object* te_get_ses_metrics(vector<int> q_id_vector)
         ses_hash_c = (i->first.second).c_str();
         if(json_object_object_get_ex(ses_metric, res_hash_c, &res_level)) {
             json_object_object_add(res_level, ses_hash_c, metrics);
-        }
-        else {
+        } else {
             res_level = json_object_new_object();
             json_object_object_add(res_level, ses_hash_c, metrics);
             json_object_object_add(ses_metric, res_hash_c, res_level);
         }
     }
 
-    if(got_metrics)
+    if(got_metrics) {
         return ses_metric;
-    else
+    } else {
+        json_object_put(ses_metric);
         return NULL;
+    }
 }
 
-vector<int> te_get_process_finished(vector<int> q_id_vector) {
-    vector<int> finished_processes;
+void te_get_process_finished(vector<int> q_id_vector, vector<int>& finished_processes) {
     te_proc_finished_msg_t proc_finished_msg;
     for(auto q_id = q_id_vector.begin(); q_id != q_id_vector.end(); ++q_id) {
         if(msgrcv(*q_id, &proc_finished_msg, PROC_FINISHED_MSG_SIZE, \
@@ -760,7 +780,6 @@ vector<int> te_get_process_finished(vector<int> q_id_vector) {
             finished_processes.push_back(*q_id);
         }
     }
-    return finished_processes;
 }
 
 /* For Future Enhancements of making the stat collector stateless
@@ -791,11 +810,10 @@ int create_or_bind_to_shmid(int token_id, size_t size_of_shm)
     return id;
 }
 
-vector<int> get_active_tedp() {
+void get_active_tedp(vector<int>& pid_vector) {
 
     string cmd = "pgrep te_dp 2>&1";
     string data;
-    vector<int> pid_vector;
 
     FILE * stream;
     char buffer[TEDP_MAX_STR_LEN];
@@ -819,21 +837,17 @@ vector<int> get_active_tedp() {
         pid_vector.push_back(strtol(token, NULL, 10));
         token = strtok(NULL, "\n");
     }
-    return pid_vector;
 }
 
-vector<int> get_newly_spawned_tedp_from_sysvq(int q_id) {
+void get_newly_spawned_tedp_from_sysvq(int q_id, vector<int>& pid_vector) {
     te_pid_t pid_msg;
-    vector<int> pid_vector;
     while(msgrcv(q_id, &pid_msg, PID_MSG_SIZE, 0, IPC_NOWAIT) != -1) {
         pid_vector.push_back(atoi(pid_msg.pid));
-    }   
-    return pid_vector;
+    }
 }
 
-vector<int> get_queue_from_pid(set<int> pid_set)
+void get_queue_from_pid(set<int> pid_set, vector<int>& qid_set)
 {
-    vector<int> qid_set;
     int q_id;
     key_t q_key;
     for(auto it=pid_set.begin(); it!=pid_set.end(); it++) {
@@ -842,14 +856,13 @@ vector<int> get_queue_from_pid(set<int> pid_set)
         if(q_id == -1) {
             q_id = msgget(q_key, 0666 | IPC_CREAT);
             if(q_id == -1) {
-                perror("ftok"); 
+                perror("ftok");
             }
             else {
                 qid_set.push_back(q_id);
             }
         }
     }
-    return qid_set;
 }
 
 int create_or_bind_to_sysvq(int id)
@@ -864,17 +877,16 @@ int create_or_bind_to_sysvq(int id)
     return q_id;
 }
 
-void stat_collector_thread(zmq::socket_t *socket, vector<int> &active_tedp_in_last_run, \
+void stat_collector_thread(const char* tcp_socket_to_connect, vector<int> &active_tedp_in_last_run, \
     int te_work_q_id, int nproc, const char* host_ip) {
 
     //Metics Basics
     int serialized_metrics_len;
-    const char* serialized_metrics;
 
     //Get information regarding currently active, dead and crashed te_dps
-    vector<int> newly_spawned_tedp = get_newly_spawned_tedp_from_sysvq(te_work_q_id);
-    vector<int> active_pid_vector = get_active_tedp();
-    vector<int> dead_tedp(nproc*3);
+    vector<int> newly_spawned_tedp, active_pid_vector, dead_tedp(nproc*3);
+    get_newly_spawned_tedp_from_sysvq(te_work_q_id, newly_spawned_tedp);
+    get_active_tedp(active_pid_vector);
     set<int> tedp_to_collect_stats_from;
     vector<int>::iterator it;
 
@@ -891,8 +903,11 @@ void stat_collector_thread(zmq::socket_t *socket, vector<int> &active_tedp_in_la
         active_tedp_in_last_run.end());
 
     //Get the corresponding q_id of the p_id to collect http_stats from
-    vector<int> q_id_vector = get_queue_from_pid(tedp_to_collect_stats_from);
-    active_tedp_in_last_run = active_pid_vector;
+    vector<int> q_id_vector;
+    get_queue_from_pid(tedp_to_collect_stats_from, q_id_vector);
+    active_tedp_in_last_run.clear();
+    for (auto i=active_pid_vector.begin(); i!=active_pid_vector.end(); i++)
+        active_tedp_in_last_run.push_back(*i);
 
     json_object* metrics = json_object_new_object();
     bool got_stats = false;
@@ -916,7 +931,8 @@ void stat_collector_thread(zmq::socket_t *socket, vector<int> &active_tedp_in_la
     }
 
     //URL METRICS
-    array<json_object*, 3> url_metrics = te_get_url_metrics(q_id_vector);
+    vector<json_object*> metrics_obj_to_clear;
+    array<json_object*, 3> url_metrics = te_get_url_metrics(q_id_vector, metrics_obj_to_clear);
     if(url_metrics[0]) {
         json_object_object_add(metrics, "url_metrics", url_metrics[0]);
         got_stats = true;
@@ -944,19 +960,39 @@ void stat_collector_thread(zmq::socket_t *socket, vector<int> &active_tedp_in_la
         got_stats = true;
     }
 
-    vector<int> finished_processes = te_get_process_finished(q_id_vector);
+    vector<int> finished_processes;
+    te_get_process_finished(q_id_vector, finished_processes);
 
     if(got_stats) {
+        // Add timestamp of generated message
         auto timenow = chrono::system_clock::to_time_t(chrono::system_clock::now());
         json_object_object_add(metrics, "ts", json_object_new_string(ctime(&timenow)));
         json_object_object_add(metrics, "host_ip", json_object_new_string(host_ip));
-        serialized_metrics = json_object_to_json_string(metrics);
-        cout <<  serialized_metrics << endl;
+        const char* serialized_metrics = json_object_to_json_string(metrics);
         serialized_metrics_len = strlen(serialized_metrics);
-        zmq::message_t request(serialized_metrics_len);
-        memcpy(request.data(), serialized_metrics, serialized_metrics_len);
-        socket->send(request);
+        cout << "Attempting to send msg of length: " << serialized_metrics_len << endl;
+
+        // Send ZMQ Message
+        // Ref: http://thisthread.blogspot.com/2012/02/push-pull-with-zeromq-31-push.html
+        void* context = zmq_init(1);
+        void* socket = zmq_socket(context, ZMQ_PUSH);
+        if (zmq_connect(socket, tcp_socket_to_connect) != 0) {
+            cerr << "ZMQ Connect failed" << endl;
+            goto cleanup;
+        }
+        if (zmq_send(socket, serialized_metrics, serialized_metrics_len, 0) == -1) {
+            cerr << "ZMQ Send failed with: " << errno << " errstr: " << strerror(errno) << endl;
+            cerr << "Message that failed: " << serialized_metrics << endl;
+            cerr << "Length of failed msg: " << serialized_metrics_len << endl;
+        }
+        zmq_close(socket);
+        zmq_term(context);
     }
+
+cleanup:
+    json_object_put(metrics);
+    for (auto it=metrics_obj_to_clear.begin(); it!=metrics_obj_to_clear.end(); it++)
+        json_object_put(*it);
 
     if(!newly_spawned_tedp.empty())
         print("newly_spawned_tedp", newly_spawned_tedp);
@@ -970,21 +1006,19 @@ void stat_collector_thread(zmq::socket_t *socket, vector<int> &active_tedp_in_la
         print("Current Active TE_DP", active_tedp_in_last_run);
     if(!finished_processes.empty())
         print("finished_process", finished_processes);
-    cout << endl << endl;
 }
 
 void stats_collector_caller(int stats_every, string te_ip, string te_zmq_port, const char* host_ip)
 {
-    zmq::context_t context(1);
-    zmq::socket_t socket(context, ZMQ_PUSH);
     string tcp_socket_to_connect = "tcp://" + te_ip + ":" + te_zmq_port;
-    socket.connect(tcp_socket_to_connect);
+    const char* tcp_socket_to_connect_cstr = tcp_socket_to_connect.c_str();
     int te_work_q_id = create_or_bind_to_sysvq(1);
     int nproc = get_nprocs();
     vector<int> active_tedp_in_last_run;
+
     while(1) {
-        stat_collector_thread(&socket, active_tedp_in_last_run, te_work_q_id, nproc, host_ip);
-        this_thread::sleep_for(chrono::seconds(stats_every));
+        stat_collector_thread(tcp_socket_to_connect_cstr, active_tedp_in_last_run, te_work_q_id, nproc, host_ip);
+        sleep(stats_every);
     }
 }
 
@@ -1062,6 +1096,7 @@ int main(int argc, char** argv)
         cout << stats_every << endl;
     }
 
-    thread thr(stats_collector_caller, stats_every, te_ip, te_zmq_port, host_ip.c_str());
-    thr.join();
+    json_object_put(root);
+
+    stats_collector_caller(stats_every, te_ip, te_zmq_port, host_ip.c_str());
 }

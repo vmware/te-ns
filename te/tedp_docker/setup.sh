@@ -45,9 +45,9 @@ wget --no-check-certificate https://www.openssl.org/source/openssl-1.1.1a.tar.gz
 tar -zxf openssl-1.1.1a.tar.gz && rm openssl-1.1.1a.tar.gz
 
 #ZeroMQ
-echo "deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/ ./" >> /etc/apt/sources.list
-wget --no-check-certificate https://download.opensuse.org/repositories/network:/messaging:/zeromq:/release-stable/Debian_9.0/Release.key -O- | apt-key add
-apt-get install -y libzmq3-dev
+#Ref: https://github.com/zeromq/libzmq
+wget https://github.com/zeromq/libzmq/releases/download/v4.3.4/zeromq-4.3.4.tar.gz
+tar -xf zeromq-4.3.4.tar.gz && rm zeromq-4.3.4.tar.gz
 
 #LIBCURL
 wget --no-check-certificate https://curl.haxx.se/download/curl-7.67.0.tar.gz
@@ -86,3 +86,13 @@ make -j$(nproc) && make install
 ldconfig
 cd /tmp/
 rm -rf libuv*
+
+#ZMQ
+apt install -y cmake
+cd zeromq-4.3.4/
+mkdir build && cd build
+cmake -DWITH_PERF_TOOL=OFF -DZMQ_BUILD_TESTS=OFF -DENABLE_CPACK=OFF -DCMAKE_BUILD_TYPE=Release ../
+make -j$(nproc) && make install
+ldconfig
+cd /tmp/
+rm -fr zeromq-4.3.4

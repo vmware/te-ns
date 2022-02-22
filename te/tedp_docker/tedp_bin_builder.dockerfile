@@ -62,6 +62,7 @@ RUN tar -czf $WORKDR/usr_lib_deps.tar.gz \
     ${usr_lib_path}/libcurl.so* \
     ${usr_lib_path}/libuv.so.1* \
     ${usr_lib_path}/libssl.so.1* \
+    ${usr_lib_path}/libzmq.so* \
     ${usr_lib_path}/libcrypto.so.1*
 
 RUN tar -czf $WORKDR/usr_lib64_deps.tar.gz \

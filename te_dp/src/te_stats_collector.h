@@ -47,7 +47,7 @@
 #include <json/json.h>
 #include <sys/sysinfo.h>
 
-#include <zmq.hpp>
+#include <zmq.h>
 
 #include <time.h>
 #include <thread>
