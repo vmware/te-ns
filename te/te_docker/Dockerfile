@@ -74,7 +74,7 @@ missingok \n\
 }\n" > /etc/logrotate.d/te-logs
 RUN chmod 0644 /etc/logrotate.d/te-logs
 
-#Creating a cron (Running cron job every 15 mins -- logrotate)
+#Creating a cron (Running cron job every 2 mins -- logrotate)
 RUN echo "*/2 * * * * /usr/sbin/logrotate /etc/logrotate.d/te-logs" > /etc/cron.d/cron_logrotate_te_logs
 RUN chmod 0644 /etc/cron.d/cron_logrotate_te_logs
 RUN crontab /etc/cron.d/cron_logrotate_te_logs
@@ -121,6 +121,7 @@ ENTRYPOINT sed -i "s/5001/$NGINX_PORT/g" /etc/nginx/sites-available/default && \
     redis-server --port $REDIS_PORT --daemonize yes && /etc/init.d/nginx restart && \
     sed -i "s/5432/$POSTGRES_PORT/g" /etc/postgresql/*/main/postgresql.conf && \
     service postgresql restart && \
+    service cron start && \
     sed -i "s/url: localhost:[0-9]*/url: localhost:$POSTGRES_PORT/g" /etc/grafana/provisioning/datasources/postgres_grafana_config.yaml && \
     echo "[supervisord]" >> /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \

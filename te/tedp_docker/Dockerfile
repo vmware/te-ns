@@ -90,7 +90,7 @@ copytruncate \n\
 missingok \n\
 }\n" > /etc/logrotate.d/te-logs && chmod 0644 /etc/logrotate.d/te-logs
 
-# cron job every 15 mins -- logrotate
+# cron job every 2 mins -- logrotate
 RUN echo "*/2 * * * * /usr/sbin/logrotate /etc/logrotate.d/te-logs" > /etc/cron.d/cron_logrotate_te_logs && \
     chmod 0644 /etc/cron.d/cron_logrotate_te_logs && crontab /etc/cron.d/cron_logrotate_te_logs
 
