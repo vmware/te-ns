@@ -37,7 +37,7 @@ greenlet==0.4.16
 ipaddress==1.0.22
 jsonschema==2.6.0
 parallel-ssh==1.9.1
-paramiko==2.4.2
+paramiko==2.10.1
 psycopg2==2.7.7
 psycopg2-binary==2.8.2
 redis==3.0.1
