@@ -34,7 +34,7 @@
 set -e
 
 if [[ $# -ne 1 ]] ; then
-    docker_repo="projects.registry.vmware.com/te:v2.0"
+    docker_repo="projects.registry.vmware.com/tens/te:v2.0"
 else
     docker_repo=$1
 fi
