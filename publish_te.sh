@@ -34,12 +34,10 @@
 set -e
 
 if [[ $# -ne 1 ]] ; then
-    echo "Improper Input"
-    echo " $0 <docker_repo>"
-    exit 1
+    docker_repo="projects.registry.vmware.com/te:v2.0"
+else
+    docker_repo=$1
 fi
-
-docker_repo=$1
 
 docker login projects.registry.vmware.com
 docker tag te:v2.0 $docker_repo
