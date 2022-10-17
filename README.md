@@ -37,7 +37,7 @@ TENS functions with specific set of libraries and we are thankful to the maintai
 |               |            |       |   Docker   |
 ## Compiling the datapath process
 * Move to te_dp folder
-	* `cd <work-space>/te_dp/`
+	* `cd <work-space>/te/tedp_docker/`
 * Install the necessary libraries (Only for debian)
 	* `./setup.sh`
 * Clean any existing binary
