@@ -1007,8 +1007,8 @@ class FlaskApplicationWrapper:
             enqueuedHosts = []
             resultDict = {}
 
-            if not self.__is_rq_established(tedp_hosts):
-                return False, "Unconnected tedps", tedp_hosts
+            if not self.__is_rq_established(tedp_host):
+                return False, "Unconnected tedps", tedp_host
 
             for host in tedp_host:
                 argsPassed = {'my_ip':host, 'remote_ip':scp_ip, 'remote_user':scp_user, \
