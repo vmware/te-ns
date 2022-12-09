@@ -252,11 +252,12 @@ class TensTE():
                 17 : "Unable to get free ports",
                 18 : "Wrong parameters passed",
                 19 : "Unable to calculate the checksum of Tar File",
-                20  : "Unable to find free port even after several tries",
-                21  : "Unable to find netstat command",
-                22  : "Unable to find both systemctl and service commands",
+                20 : "Unable to find free port even after several tries",
+                21 : "Unable to find netstat command",
+                22 : "Unable to find both systemctl and service commands",
                 23 : "docker pull command failed",
                 24 : "docker run command failed",
+                127 : "python module not found",
                 200 : "Success",
                 404 : "Fatal: unknown reason"
         }
