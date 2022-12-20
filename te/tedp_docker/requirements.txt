@@ -35,5 +35,5 @@ requests==2.25.1
 rq==0.13.0
 sysv-ipc==1.0.0
 urllib3==1.26.5
-paramiko
-scp
+paramiko==2.11.0
+scp==0.14.4
