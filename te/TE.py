@@ -792,7 +792,7 @@ class FlaskApplicationWrapper:
                     cmd_to_enqueue = per_host_cmd.get(host_ip,None)
                     if(bool(cmd_to_enqueue)):
                         enqueuedCall = self.__tedp_config[host_ip].run_mgmt_command_helper(
-                            run_mgmt_command_te_dp, {"cmd":cmd_to_enqueue, "task":task})
+                            run_mgmt_command_te_dp, {"cmd":cmd_to_enqueue, "task":task}, job_timeout)
                     else:
                         problematicHost.append(host_ip)
 
