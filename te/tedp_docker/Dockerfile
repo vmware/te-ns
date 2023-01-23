@@ -30,7 +30,7 @@
 #**********************************************************************************************
 
 # Stage 2 (Build final image)
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 ENV WORKDR=/opt/te/
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
@@ -53,7 +53,7 @@ RUN apt update && \
 
 # python related requirements
 COPY te/tedp_docker/requirements.txt /tmp/
-RUN pip3 install --upgrade "pip < 21.0"
+RUN pip3 install --upgrade "pip == 22.3.1"
 RUN pip3 install --requirement /tmp/requirements.txt
 
 COPY te/open_source_licenses.tar.bz2 /

@@ -31,7 +31,7 @@
 
 
 # Stage 1 (Build tedp binaries)
-FROM ubuntu:16.04 as build_stage
+FROM ubuntu:22.04 as build_stage
 ENV WORKDR=/opt/te/
 ENV TZ=UTC
 ARG usr_lib_path=/usr/local/lib
@@ -50,12 +50,12 @@ RUN chmod 755 /tmp/setup.sh
 RUN /bin/bash -e /tmp/setup.sh
 
 # uninstall libssl1.0 if any
-RUN apt remove --purge -y libssl-dev libssl-doc libssl1.0.0 openssl
+RUN apt remove --purge -y libssl-dev libssl-doc openssl
 
 RUN mkdir -pv $WORKDR/bin && mkdir $WORKDR/obj
 ADD te_dp/Makefile $WORKDR
 ADD te_dp/src $WORKDR/src
-RUN cd $WORKDR && make all
+RUN cd $WORKDR && make clean && make all
 
 # bundle all necessary dep libraries
 RUN tar -czf $WORKDR/usr_lib_deps.tar.gz \
@@ -69,4 +69,4 @@ RUN tar -czf $WORKDR/usr_lib64_deps.tar.gz \
     ${usr_lib64_path}/*
 
 RUN tar -czf $WORKDR/lib64_deps.tar.gz \
-    ${lib64_path}/libjson-c.so.2*
+    ${lib64_path}/libjson-c.so.5*

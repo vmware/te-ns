@@ -32,6 +32,11 @@
 #ifndef TE_TCP_DP_H
 #define TE_TCP_DP_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <unistd.h>
 #include <openssl/ssl.h>
 
 #ifndef TE_DP_H
