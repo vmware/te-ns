@@ -29,7 +29,7 @@
 # OF SUCH DAMAGE
 #**********************************************************************************************
 
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
 ENV IPADRESS=127.0.0.1
 ENV FLASK_PORT=5000
@@ -75,12 +75,14 @@ missingok \n\
 RUN chmod 0644 /etc/logrotate.d/te-logs
 
 #Creating a cron (Running cron job every 2 mins -- logrotate)
+RUN apt-get install -y cron
 RUN echo "*/2 * * * * /usr/sbin/logrotate /etc/logrotate.d/te-logs" > /etc/cron.d/cron_logrotate_te_logs
 RUN chmod 0644 /etc/cron.d/cron_logrotate_te_logs
 RUN crontab /etc/cron.d/cron_logrotate_te_logs
 
 COPY te_docker/requirements.txt /tmp/
-RUN pip3 install --upgrade "pip < 21.0"
+RUN apt install libpq-dev -y
+RUN pip3 install --upgrade "pip == 22.3.1"
 RUN pip3 install --requirement /tmp/requirements.txt
 
 COPY te_docker/setup_postgres.sh /tmp/

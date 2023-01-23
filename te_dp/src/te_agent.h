@@ -53,7 +53,7 @@ typedef struct te_bst_node_s
     struct te_bst_node_s *left, *right;
 } te_bst_node_t;
 
-uv_loop_t *loop;
+extern uv_loop_t *loop;
 
 void init_te_dp(bool is_update);
 void update_te_dp();

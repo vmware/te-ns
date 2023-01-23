@@ -40,7 +40,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <netinet/in.h>
-#include <json/json.h>
+#include <json-c/json.h>
 #include <sys/msg.h>
 
 #ifndef TE_AGENT_H
@@ -49,6 +49,7 @@
 
 struct timeval tv;
 struct tm * timeinfo;
+uv_loop_t *loop;
 
 // The IPC_QUEUE is used to dump the metrics
 // It is named with the TE_DP process's pid as its fd
@@ -1423,10 +1424,10 @@ void te_parse_updated_config (bool res_update, bool ses_update)
    tprint("%s %s %s ses update %d, res update %d \n", __FUNCTION__,
            res_cfg_path, session_cfg_path, ses_update, res_update);
    if (res_update) {
-       te_process_resource_config(res_cfg_path, TRUE);
+       te_process_resource_config(res_cfg_path, true);
    }
    if (ses_update) {
-       te_process_session_config(session_cfg_path, TRUE);
+       te_process_session_config(session_cfg_path, true);
    }
 }
 void te_init_update_context ()
@@ -2005,7 +2006,7 @@ void te_process_session_config (const char* session_config, bool is_update)
         te_session_cfgs = te_session_cfgs_temp;
     }
     tprint("updated ses_cfg %p prev ses_cfg %p \n", te_session_cfgs_updated, te_session_cfgs);
-    if (is_update == FALSE) {
+    if (is_update == false) {
         for (iter = 0; iter < num_cfgs; iter++) {
             session_cfg = &te_session_cfgs[iter];
             session_cfg->id = iter + 1;
@@ -2056,7 +2057,7 @@ void te_open_logger_files()
     unsigned int pid = getpid();
     
     /* if log files are already open , do not re open again*/
-    if (te_log_files->logs_open == TRUE) {
+    if (te_log_files->logs_open == true) {
         return;
     }
     snprintf(filename , 128,"%s/te_debug.%d.csv", te_log_files->log_file_path, pid);
@@ -2080,18 +2081,18 @@ void te_open_logger_files()
     }
     setbuf(te_log_files->test_logger, NULL);
 
-    te_log_files->logs_open = TRUE;
+    te_log_files->logs_open = true;
 }
 
 void te_print_formatters()
 {
-    if (te_log_files->headers_printed == TRUE) {
+    if (te_log_files->headers_printed == true) {
         return;
     }
     iprint(TE_TRACE, "LOG_TYPE_INFO, TIME, Session, Cycle, Message\n");
     /*iprint(TE_ERROR, "LOG_TYPE_ERROR, TIME,  Session, Cycle,  ERROR_CODE, Req Id,"
            "Local IP, Local Port, Remote IP, Remote Port, URL, Expected, Received\n");*/
-    te_log_files->headers_printed = TRUE;
+    te_log_files->headers_printed = true;
 }
 
 void te_set_sys_limits()
