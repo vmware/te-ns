@@ -41,7 +41,7 @@ else:
 
 from threading import Thread
 import logging, logging.handlers
-from collections import Mapping
+from collections.abc import Mapping
 from sysv_ipc import MessageQueue, ftok, BusyError, IPC_CREAT
 
 

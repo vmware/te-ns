@@ -57,6 +57,7 @@ try:
     from flask_restful import Api, Resource, reqparse, fields, marshal
     from flask_inputs.validators import JsonSchema
     from pssh.clients import ParallelSSHClient
+    from pssh.config import HostConfig
     from pssh.exceptions import ConnectionErrorException, SSHException, AuthenticationException, UnknownHostException
     from rq import Queue as rqQueue
     from redis import Redis
@@ -409,9 +410,10 @@ class FlaskApplicationWrapper:
             stdOut = {}
             problematicHost = {}
             exceptionHostTohandle = []
-            for host, runDetails in output.items():
+            for runDetails in output:
                 exitCodeHost = runDetails.exit_code
                 exceptionHost = runDetails.exception
+                host = runDetails.host
                 if(isinstance(exceptionHost, SSHException)):
                     self.lgr.debug("Got Exception %s in host %s" %(str(runDetails.exception), host))
                     exceptionHostTohandle.append(host)
@@ -426,7 +428,7 @@ class FlaskApplicationWrapper:
 
                 #If stdout is needed
                 if getStdOut:
-                    gotOut = runDetails.stdout
+                    gotOut = runDetails.channel.read(1024)
                     if gotOut is None:
                         self.lgr.error("Unable to get response from the client host_ip=%s"%host)
                         if host not in problematicHost:
@@ -436,10 +438,10 @@ class FlaskApplicationWrapper:
             return stdOut, exceptionHostTohandle, problematicHost
 
         #Run the command for the first time
-        output = {}
+        output = []
         output = __run_command(client, cmd=cmd, host_args=host_args)
         out, exceptionHostTohandle, problematicHost = __validateOutput(output)
-        output.update(out)
+        output.append(out)
         if exceptionHostTohandle == []:
             return ((output, problematicHost) if getStdOut else problematicHost)
 
@@ -448,6 +450,7 @@ class FlaskApplicationWrapper:
             retryExceptionPresent = False
             retryHostConfig = OrderedDict()
             retryHostArgs = OrderedDict()
+            tedp_host_config = []
 
             if exceptionHostTohandle != []:
                 self.lgr.info("Retrying=%d/%d due to exception of Busy Client in host=%s" %(i+2,max_retries,str(exceptionHostTohandle)))
@@ -456,6 +459,10 @@ class FlaskApplicationWrapper:
             for host in exceptionHostTohandle:
                 retryExceptionPresent = True
                 retryHostConfig[host] = te_dp_hosts[host]
+                if 'password' in te_dp_hosts[host]:
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host]['user'], password=te_dp_hosts[host]['password']))
+                else:
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host]['user']))
                 if host in host_args.keys():
                     retryHostArgs[host] = host_args[host]
 
@@ -464,7 +471,7 @@ class FlaskApplicationWrapper:
                 return ((output, problematicHost) if getStdOut else problematicHost)
 
             #Create New retry client and repeat the process
-            retryClient = ParallelSSHClient(retryHostConfig.keys(), host_config=retryHostConfig, timeout = 240)
+            retryClient = ParallelSSHClient(list(retryHostConfig.keys()), host_config=tedp_host_config, timeout = 240)
             output = __run_command(retryClient, cmd=cmd, host_args=retryHostArgs)
             out, exceptionHostTohandle, retryProblematicHost = __validateOutput(output)
             output.update(out)
@@ -755,13 +762,17 @@ class FlaskApplicationWrapper:
             return self.__failure("No te_dp_dict Passed")
 
         te_dp_hosts = {}
+        tedp_host_config = []
         for host_ip, details in te_dp_dict.items():
             te_dp_hosts[host_ip] = {'user': details.get('user','root')}
             passwd = details.get('passwd', None)
             if passwd:
                 te_dp_hosts[host_ip]['password'] = passwd
+                tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user'], password=te_dp_hosts[host_ip]['password']))
+            else:
+                tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user']))
 
-        client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
+        client = ParallelSSHClient(list(te_dp_hosts.keys()), host_config=tedp_host_config, timeout = 240)
         status, msg, result = self.__get_cpu_count_tedps(te_dp_hosts, client)
         del client
 
@@ -1155,6 +1166,7 @@ class FlaskApplicationWrapper:
         force = convert(jsonContent.get('force', False))
 
         te_dp_hosts = {}
+        tedp_host_config = []
 
         if force:
             host_ips_to_setup = set(te_dp_dict.keys())
@@ -1178,6 +1190,9 @@ class FlaskApplicationWrapper:
             te_dp_hosts[host_ip] = {'user': user}
             if passwd:
                 te_dp_hosts[host_ip]['password'] = passwd
+                tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user'], password=te_dp_hosts[host_ip]['password']))
+            else:
+                tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user']))
             self.__all_te_dp_dict_credentials[host_ip] = te_dp_hosts[host_ip]
 
         if(bool(invalid_input)):
@@ -1187,7 +1202,7 @@ class FlaskApplicationWrapper:
             return self.__failure({"TEPDs already setup" : list(self.__setup_completed_tedps)})
 
         self.lgr.debug("Running setup_tedp on {}".format(te_dp_hosts))
-        client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
+        client = ParallelSSHClient(list(te_dp_hosts.keys()), host_config=tedp_host_config, timeout = 240)
         self.lgr.debug("Creation of ParallelSSHClient Success")
         status, msg, result = self.__setup_tedps(te_dp_hosts, client)
         del client
@@ -1316,6 +1331,7 @@ class FlaskApplicationWrapper:
         if remove_containers:
             # If container needs to be removed go via ssh
             te_dp_hosts = {}
+            tedp_host_config = []
             te_dp_in_no_access = set()
             for host_ip in self.__connect_completed_tedps:
                 if host_ip not in self.__all_te_dp_dict_credentials:
@@ -1325,6 +1341,10 @@ class FlaskApplicationWrapper:
                 passwd = self.__all_te_dp_dict_credentials[host_ip].get('password', None)
                 if passwd:
                     te_dp_hosts[host_ip]['password'] = passwd
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user'], password=te_dp_hosts[host_ip]['password']))
+                else:
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user']))
+
             for host_ip in self.__setup_completed_tedps:
                 if host_ip not in self.__all_te_dp_dict_credentials:
                     te_dp_in_no_access.add(host_ip)
@@ -1333,14 +1353,17 @@ class FlaskApplicationWrapper:
                 passwd = self.__all_te_dp_dict_credentials[host_ip].get('password', None)
                 if passwd:
                     te_dp_hosts[host_ip]['password'] = passwd
-
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user'], password=te_dp_hosts[host_ip]['password']))
+                else:
+                    tedp_host_config.append(HostConfig(user=te_dp_hosts[host_ip]['user']))
+                
             self.__setup_completed_tedps = self.__setup_completed_tedps.difference(te_dp_in_no_access)
             self.__connect_completed_tedps = self.__connect_completed_tedps.difference(te_dp_in_no_access)
 
             if(not(bool(te_dp_hosts))):
                 return self.__failure("No connected te dps to disconnect")
 
-            client = ParallelSSHClient(te_dp_hosts.keys(), host_config=te_dp_hosts, timeout = 240)
+            client = ParallelSSHClient(list(te_dp_hosts.keys()), host_config=tedp_host_config, timeout = 240)
             status, msg, result = self.__disconnect_tedps(te_dp_hosts, client)
             del client
 
