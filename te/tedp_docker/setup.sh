@@ -33,12 +33,10 @@
 cd /tmp/
 sed -i '/deb-src/s/^# //' /etc/apt/sources.list && apt update
 apt install automake libtool m4 -y
-apt install libjson-c-dev -y
+apt install libjson0 libjson0-dev -y
 apt build-dep curl -y
 apt install wget -y
 apt install build-essential nghttp2 libnghttp2-dev -y
-apt install -y curl
-apt install -y libcurl4-nss-dev
 
 ###################### Download all first ######################
 
@@ -51,12 +49,16 @@ tar -zxf openssl-1.1.1a.tar.gz && rm openssl-1.1.1a.tar.gz
 wget https://github.com/zeromq/libzmq/releases/download/v4.3.4/zeromq-4.3.4.tar.gz
 tar -xf zeromq-4.3.4.tar.gz && rm zeromq-4.3.4.tar.gz
 
+#LIBCURL
+wget --no-check-certificate https://curl.haxx.se/download/curl-7.67.0.tar.gz
+tar -xvf curl-7.67.0.tar.gz && rm curl-7.67.0.tar.gz
+
 #LIBUV
-wget --no-check-certificate https://dist.libuv.org/dist/v1.44.0/libuv-v1.44.0.tar.gz
-tar xvf libuv-v1.44.0.tar.gz && rm libuv-v1.44.0.tar.gz
+wget --no-check-certificate https://dist.libuv.org/dist/v1.27.0/libuv-v1.27.0.tar.gz
+tar xvf libuv-v1.27.0.tar.gz && rm libuv-v1.27.0.tar.gz
 
 ###################### purge libssl1.0 ######################
-apt remove --purge -y libssl-dev libssl-doc openssl
+apt remove --purge -y libssl-dev libssl-doc libssl1.0.0 openssl
 
 ###################### Install them ######################
 
@@ -67,8 +69,17 @@ ldconfig
 cd /tmp/
 rm -rf openssl*
 
+#LIBCURL
+cd curl-7.67.0
+#For openssl 1.1.1 support (TLSv1.3)
+./configure --with-nghttp2 --prefix=/usr/local --with-default-ssl-backend=openssl --enable-ipv6
+make -j$(nproc) && make install
+ldconfig
+cd /tmp/
+rm -rf curl*
+
 #LIBUV
-cd libuv-v1.44.0/
+cd libuv-v1.27.0/
 ./autogen.sh
 ./configure
 make -j$(nproc) && make install
