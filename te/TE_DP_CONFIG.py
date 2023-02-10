@@ -589,7 +589,8 @@ class TE_DP_CONFIG:
                 cpu = self.__cpu["mgmt_core"]
                 task_obj = self.__task_mapping[typeOfTask][cpu]
                 #Task Completed
-                if task_obj.status == "finished":
+                status = task_obj.get_status()
+                if status == "finished":
                     result = task_obj.result
                     status, result_after_evaluation = self.__resultEvaluator[typeOfTask](result)
                     if status: #Task Success
@@ -604,7 +605,7 @@ class TE_DP_CONFIG:
                     self.__task_mapping[typeOfTask].pop(cpu)
 
                 #Task Failed due to RQ Error
-                elif task_obj.status == "failed":
+                elif status == "failed":
                     taskResult["RQ-Failure"] += 1
                     taskResult["status"] = False
                     self.lgr.debug("RQ-Failure in host_ip={} and result={}".format(
@@ -667,7 +668,8 @@ class TE_DP_CONFIG:
                     task_obj = self.__task_mapping[typeOfTask][cpu]
 
                     #Task Completed
-                    if task_obj.status == "finished":
+                    status = task_obj.get_status()
+                    if status == "finished":
                         result = task_obj.result
                         status, task_profile_tag = self.__resultEvaluator[typeOfTask](result, cpu)
                         if status: #Task Success
@@ -680,7 +682,7 @@ class TE_DP_CONFIG:
                         self.__task_mapping[typeOfTask].pop(cpu)
 
                     #Task Failed due to RQ Error
-                    elif task_obj.status == "failed":
+                    elif status == "failed":
                         status, task_profile_tag = self.__resultEvaluator[typeOfTask](None, cpu)
                         taskResult["RQ-Failure"][task_profile_tag] += 1
                         taskResult["status"] = False

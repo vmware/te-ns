@@ -127,8 +127,8 @@ enum MEMORY_TYPE {
 
 // Will be memset to 0, after every dump
 // Posses the number of times an alloc / free is made
-unsigned int malloc_metric[MEMORY_TYPE_SIZE];
-unsigned int free_metric[MEMORY_TYPE_SIZE];
+extern unsigned int malloc_metric[MEMORY_TYPE_SIZE];
+extern unsigned int free_metric[MEMORY_TYPE_SIZE];
 
 // Defaults to false, will run, only during the run of test-suites
 extern bool memory_metrics_enabled;

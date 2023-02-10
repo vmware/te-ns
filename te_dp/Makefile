@@ -39,7 +39,7 @@ BINDIR = bin
 DP_SRC   = $(wildcard $(SRCDIR)/*.c)
 DP_OBJ   = $(DP_SRC:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 DP_BIN   = $(BINDIR)/te_dp
-DP_FLAGS = -lcurl -luv -ljson -lssl -lpthread
+DP_FLAGS = -lcurl -luv -ljson-c -lssl -lpthread
 
 STAT_SRC   = $(wildcard $(SRCDIR)/*.cpp)
 STAT_OBJ   = $(STAT_SRC:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
@@ -47,12 +47,12 @@ STAT_FLAGS = -lzmq -ljson
 STAT_BIN   = $(BINDIR)/te_stats_collector
 
 CFLAGS     = -g -O0 -Wall -I.
-STAT_FLAGS = -pthread -lzmq -ljson
+STAT_FLAGS = -pthread -lzmq -ljson-c
 
 all: dp stat
 
 dp: $(DP_OBJ)
-	@$(CC) $(CFLAGS) -o $(DP_BIN) $^ $(DP_FLAGS)
+	@$(CC) $(CFLAGS) -o $(DP_BIN) $^ $(DP_FLAGS) -no-pie
 	@echo "Compiled Traffic Engine Datapath Successfully!"
 
 stat: $(STAT_OBJ)
