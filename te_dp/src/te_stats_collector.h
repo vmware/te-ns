@@ -44,7 +44,7 @@
 #include <sys/msg.h>
 #include <sys/shm.h>
 #include <sys/types.h>
-#include <json/json.h>
+#include <json-c/json.h>
 #include <sys/sysinfo.h>
 
 #include <zmq.h>

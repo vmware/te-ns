@@ -40,7 +40,7 @@
 #include <sched.h>
 #include <pthread.h>
 #include <netinet/in.h>
-#include <json/json.h>
+#include <json-c/json.h>
 #include <sys/msg.h>
 
 #ifndef TE_AGENT_H
@@ -49,6 +49,7 @@
 
 struct timeval tv;
 struct tm * timeinfo;
+uv_loop_t *loop;
 
 // The IPC_QUEUE is used to dump the metrics
 // It is named with the TE_DP process's pid as its fd
