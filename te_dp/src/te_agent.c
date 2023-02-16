@@ -42,6 +42,7 @@
 #include <netinet/in.h>
 #include <json-c/json.h>
 #include <sys/msg.h>
+#include <ctype.h>
 
 #ifndef TE_AGENT_H
 #include "te_agent.h"
@@ -724,6 +725,131 @@ te_http_url_metrics_t* deep_copy(te_http_url_metrics_t* source, int length) {
     return destn;
 }
 
+/** Validates IPv6 address in format [IPv6] */
+int validate_ipv6_address(char ip_str[]) {
+    int i, j, num_colons;
+    char *token;
+    const char delimiters[] = "[]:";
+    char temp_ip[100];
+    strncpy(temp_ip, ip_str, strlen(ip_str)+1);
+
+    /**
+    // Check that the IPv6 address starts and ends with square brackets
+    if (ip_str[0] != '[' || ip_str[strlen(ip_str)-1] != ']') {
+        return 1;
+    }
+    */
+    // Count the number of colons in the string
+    num_colons = 0;
+    for (i = 0; i < strlen(ip_str); i++) {
+        if (ip_str[i] == ':') {
+            num_colons++;
+        }
+    }
+    // IPv6 address must have at least two colons to separate the network prefix from the interface ID
+    if (num_colons < 2) {
+        return 1;
+    }
+
+    // Split the IPv6 address into groups of hex digits separated by colons
+    token = strtok(temp_ip+1, delimiters);
+    while (token != NULL) {
+        // Check that each group has at most 4 hex digits
+        if (strlen(token) > 4) {
+            return 1;
+        }
+        // Check that each character in the group is a valid hex digit
+        for (j = 0; j < strlen(token); j++) {
+            if (!isxdigit(token[j])) {
+                return 1;
+            }
+        }
+        token = strtok(NULL, delimiters);
+    }
+    return 0;
+}
+
+
+/** Validates IPv4 addr*/
+int validate_ipv4_address(char ip_str[]) {
+    int i, num;
+    char *token, *ptr;
+    const char delimiters[] = ".";
+    char temp_ip[100];
+    strncpy(temp_ip, ip_str, strlen(ip_str)+1);
+    // Split the IP address into four numbers separated by dots
+    token = strtok(temp_ip, delimiters);
+    for (i = 0; i < 4; i++) {
+        // Check that there are four numbers in the IP address
+        if (token == NULL) {
+            return 1;
+        }
+        // Convert the number to an integer
+        num = strtol(token, &ptr, 10);
+        // Check that the number is between 0 and 255
+        if (num < 0 || num > 255 || *ptr != '\0') {
+            return 1;
+        }
+        token = strtok(NULL, delimiters);
+    }
+    // Check that there are no extra characters in the IP address string
+    if (token != NULL) {
+        return 1;
+    }
+    return 0;
+}
+
+
+/** Scanning vIP:port */
+void fetch_ip_port(const char ip_port_str[], char *ip, char *port) {
+
+    int i, j, k;
+    // Check if IPv6 address
+    if (ip_port_str[0] == '[') {
+        // Find the position of the closing bracket
+        for (i = 1; i < strlen(ip_port_str); i++) {
+            if (ip_port_str[i] == ']') {
+                break;
+            }
+        }
+        // Copy the IP address string
+        strncpy(ip, ip_port_str+1, i-1);
+        ip[i-1] = '\0';
+        // Find the position of the colon
+        for (j = i+1; j < strlen(ip_port_str); j++) {
+            if (ip_port_str[j] == ':') {
+                break;
+            }
+        }
+        // Copy the port number string
+        k = 0;
+        for (i = j+1; i < strlen(ip_port_str); i++) {
+            port[k] = ip_port_str[i];
+            k++;
+        }
+        port[k] = '\0';
+    }
+    // IPv4 address
+    else {
+        // Find the position of the colon
+        for (i = 0; i < strlen(ip_port_str); i++) {
+            if (ip_port_str[i] == ':') {
+                break;
+            }
+        }
+        // Copy the IP address string
+        strncpy(ip, ip_port_str, i);
+        ip[i] = '\0';
+        // Copy the port number string
+        k = 0;
+        for (j = i+1; j < strlen(ip_port_str); j++) {
+            port[k] = ip_port_str[j];
+            k++;
+        }
+        port[k] = '\0';
+    }
+}
+
 void te_process_resource_config(const char* resource_config, bool is_update) {
     int i, arraylen;
     json_object *jobj, *jvalue, *jtmp, *jarray, *jr, *temp = NULL, *root = NULL;
@@ -924,26 +1050,17 @@ void te_process_resource_config(const char* resource_config, bool is_update) {
                             //Scanning vIP:port
                             jvalue = json_object_array_get_idx(jarray,i);
                             if (json_object_object_get_ex(jvalue, "vip",&temp)) {
-                                res_cfg_temp->vips[i].vport = 162;
-                                char delim[] = ":";
-                                char* ptr = strtok((char*)json_object_get_string(temp), delim);
-                                int cnt = 0;
-                                bool got_vip = false;
-                                while(ptr != NULL) {
-                                    if(cnt == 0) {
-                                        got_vip = true;
-                                        strcpy(res_cfg_temp->vips[i].vip, ptr);
-                                    }
-                                    else if(cnt == 1)
-                                        res_cfg_temp->vips[i].vport = atoi(ptr);
-                                    else {
-                                        eprint("Unexpected vip format. Expected - vip:port\n");
-                                        abort();
-                                    }
-                                    cnt++;
-                                    ptr = strtok(NULL, delim);
+                                char port[10];
+                                fetch_ip_port(json_object_get_string(temp), res_cfg_temp->vips[i].vip, port);
+                                if (port[0] == '\0') {
+                                    res_cfg_temp->vips[i].vport = 162;
+                                } else {
+                                    res_cfg_temp->vips[i].vport = atoi(port);
                                 }
-                                if(!got_vip) {
+                                //validates vIP:port format
+                                // IPv4:Port or [IPv6:Port]
+                                if (validate_ipv4_address(res_cfg_temp->vips[i].vip) && \
+                                    validate_ipv6_address(res_cfg_temp->vips[i].vip)) {
                                     eprint("Unexpected vip format. Expected - vip:port\n");
                                     abort();
                                 }
