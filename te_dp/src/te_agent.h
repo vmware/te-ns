@@ -78,4 +78,7 @@ void te_push_session_config_fsm(TE_SESSION_CONFIG_STATE state);
 void session_config_uv_async(uv_async_t *req);
 void te_tedp_poll_uv_cb(uv_poll_t *req, int status, int events);
 
+extern int validate_ipv6_address(char ip_str[]);
+extern int validate_ipv4_address(char ip_str[]);
+
 #endif

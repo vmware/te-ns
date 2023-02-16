@@ -78,7 +78,8 @@ typedef struct te_udp_server_sock_state_s {
     unsigned long          timeout;
     // dg sent and rcvd timestamp -- to calculate latency from the server perspective
     double                 first_dg_rcvd_ts;
-    unsigned long          vip, client_ip;
+    unsigned long          client_ip;
+    char                   vip[40];
     unsigned short         vport, client_port;
 } te_udp_server_sock_state_t;
 
@@ -98,6 +99,7 @@ typedef struct te_socket_node_s {
     // Note that the remote_sock_addr's ip and port need not be same as client_ip and client_port
     // The IP and Port in remote_sock_addr can denote the Application's src port and ip
     struct sockaddr_in            remote_sock_addr;
+    struct sockaddr_in6            remote_sock_addr_v6;
     unsigned int                  client_ip;
     unsigned short                client_port;
 
@@ -123,6 +125,8 @@ typedef struct te_socket_hashTbl_s {
 
 te_socket_node_t* te_create_or_retrieve_tcp_socket(curl_socket_t, te_session_t*);
 te_socket_node_t* te_create_or_retrieve_udp_server_socket(struct sockaddr_in, unsigned int, \
+    unsigned short, unsigned long, udp_server_easy_handle_t *);
+te_socket_node_t* te_create_or_retrieve_udp_server_socket_v6(struct sockaddr_in6, unsigned int, \
     unsigned short, unsigned long, udp_server_easy_handle_t *);
 void te_udp_sock_parse_on_timeout(double);
 void te_remove_udp_server_socket_node(te_socket_node_t*);
