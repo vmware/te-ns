@@ -137,7 +137,7 @@ static void server_socket_init(te_socket_node_t* socket_node, \
     udp_server_easy_handle_t* server_easy_handle, \
     udp_message_header_t* udp_msg_header, ssize_t nread, double current_time) {
 
-    socket_node->state.vip = udp_msg_header->vip;
+    snprintf(socket_node->state.vip, sizeof(socket_node->state.vip), "%s", udp_msg_header->vip);
     socket_node->state.vport = udp_msg_header->vport;
     socket_node->state.client_ip = udp_msg_header->client_ip;
     socket_node->state.client_port = udp_msg_header->client_port;
@@ -239,7 +239,7 @@ static void server_socket_recv_dg(te_socket_node_t* socket_node, \
         socket_node->state.respond_now_recd = udp_msg_header->respond_now;
         socket_node->state.last_ts = current_time;
         socket_node->state.timeout = udp_msg_header->timeout;
-        socket_node->state.vip = udp_msg_header->vip;
+        snprintf(socket_node->state.vip, sizeof(socket_node->state.vip), "%s", udp_msg_header->vip);
         socket_node->state.vport = udp_msg_header->vport;
 
         socket_node->metric.dg_to_recv = udp_msg_header->total_request_dg;
@@ -295,9 +295,15 @@ static void server_socket_send_dg(te_socket_node_t* socket_node, \
         uv_udp_send_t* send_req;
         te_malloc(send_req, sizeof(uv_udp_send_t), TE_MTYPE_UDP_SEND_DATAGRAM);
         send_req->data = socket_node;
-        assert_code = uv_udp_send(send_req, &(server_easy_handle->uv_udp_handle), &buffer, 1, \
-            (const struct sockaddr *)(&socket_node->remote_sock_addr), \
-            udp_datagram_server_send_callback);
+        if (socket_node->remote_sock_addr.sin_addr.s_addr) {
+            assert_code = uv_udp_send(send_req, &(server_easy_handle->uv_udp_handle), &buffer, 1, \
+                (const struct sockaddr *)(&socket_node->remote_sock_addr), \
+                udp_datagram_server_send_callback);
+        } else {
+            assert_code = uv_udp_send(send_req, &(server_easy_handle->uv_udp_handle), &buffer, 1, \
+                (const struct sockaddr *)(&socket_node->remote_sock_addr_v6), \
+                udp_datagram_server_send_callback);
+        }
 
         if(unlikely(assert_code != 0)) {
             eprint("Unable to send %s\n", uv_err_name(assert_code));
@@ -308,6 +314,48 @@ static void server_socket_send_dg(te_socket_node_t* socket_node, \
     socket_node->state.status = SERVER_SOCKET_BUFFER_DG;
     tprint("All DG sent and moving to state=%d from state=%d\n", \
         socket_node->state.status, SERVER_SOCKET_SEND_DG);
+}
+
+static void udp_datagram_server_recv_v6_callback(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,\
+    const struct sockaddr *from_addr, unsigned flags) {
+
+    //Size to read can't be negative
+    if (unlikely(nread < 0)) {
+        //AK Revisit UDP Metrics
+        eprint("Read error %s\n", uv_err_name(nread));
+    } else if(unlikely(flags != 0)) {
+        //Partial receive
+        eprint("Partial recv %d\n", flags);
+    }
+
+    //Read the message sent
+    if (likely(from_addr != NULL && nread > 0)) {
+        struct sockaddr_in6 *from_addr_in = (struct sockaddr_in6*)(from_addr);
+        udp_server_easy_handle_t* server_easy_handle = (udp_server_easy_handle_t*)req->data;
+        udp_message_header_t* udp_msg_header = (udp_message_header_t*)buf->base;
+        te_socket_node_t* socket_node = te_create_or_retrieve_udp_server_socket_v6(*from_addr_in, \
+            udp_msg_header->client_ip, udp_msg_header->client_port, udp_msg_header->unique_stream_id, \
+            server_easy_handle);
+
+        struct timespec current_time_struct;
+        clock_gettime(CLOCK_MONOTONIC_RAW, &current_time_struct);
+        double current_time =  (current_time_struct.tv_sec)*1000 + \
+                                (double)(current_time_struct.tv_nsec)/BILLION;
+
+        if(likely(socket_node->state.status >= SERVER_SOCKET_INIT && \
+            socket_node->state.status <= SERVER_SOCKET_SEND_DG)) {
+            (*te_server_socket_state_switcher[socket_node->state.status])(socket_node, \
+                server_easy_handle, udp_msg_header, nread, current_time);
+        } else {
+            eprint("Unknown socket state\n");
+            abort();
+        }
+    }
+
+    //Free the memory of the message got upon completion
+    if(likely(buf->base != NULL)) {
+        te_free(buf->base, TE_MTYPE_VOID);
+    }
 }
 
 static void udp_datagram_server_recv_callback(uv_udp_t *req, ssize_t nread, const uv_buf_t *buf,\
@@ -499,9 +547,40 @@ UDPEcode udp_server_easy_setopt_ptr(udp_server_easy_handle_t* server_easy_handle
     return return_code;
 }
 
-UDPEcode udp_server_easy_start_listen(udp_server_easy_handle_t* server_easy_handle) {
+UDPEcode udp_server_easy_start_listen_v6(udp_server_easy_handle_t* server_easy_handle){
     int assert_code;
-    //Update the handle on the port to listen
+    uv_ip6_addr("::", server_easy_handle->d_port, &(server_easy_handle->recv_addr_v6));
+    //Init the UDP socket to listen
+    assert_code = uv_udp_init(loop, &(server_easy_handle->uv_udp6_handle));
+    if(unlikely(assert_code != 0)) {
+        return UDPE_UNABLE_TO_INIT_LISTENER;
+    }
+    //Bind to the listening port (If port is used by another process - steal it)
+    assert_code = uv_udp_bind(&(server_easy_handle->uv_udp6_handle) , \
+                    (const struct sockaddr *)&(server_easy_handle->recv_addr_v6), \
+                    UV_UDP_REUSEADDR);
+    if(unlikely(assert_code != 0)) {
+        return UDPE_UNABLE_TO_BIND_LISTENER;
+    }
+
+    server_easy_handle->uv_udp6_handle.data = server_easy_handle;
+
+    //Add to the event loop and start listening
+    assert_code = uv_udp_recv_start(&(server_easy_handle->uv_udp6_handle), \
+        udp_datagram_alloc_buffer, udp_datagram_server_recv_v6_callback);
+    if(unlikely(assert_code != 0)) {
+        return UDPE_UNABLE_TO_START_LISTENER;
+    }
+    return UDPE_OK;
+}
+
+UDPEcode udp_server_easy_start_listen(udp_server_easy_handle_t* server_easy_handle) {
+    int assert_code; UDPEcode ecode;
+    //Update the handle on the port to listen on v6
+    ecode = udp_server_easy_start_listen_v6(server_easy_handle);
+    if(unlikely(ecode != UDPE_OK))
+        eprint("UDP6_LISTEN_START, %d\n", ecode);
+
     uv_ip4_addr("0.0.0.0", server_easy_handle->d_port, &(server_easy_handle->recv_addr));
 
     //Init the UDP socket to listen
@@ -729,8 +808,15 @@ static UDPMcode send_client_udp_datagrams(udp_connection_t* conn_handle, udp_eas
     udp_msg_header.unique_stream_id = conn_handle->unique_id;
     udp_msg_header.client_ip        = easy_handle->conn_handle_back_ptr->client_ip;
     udp_msg_header.client_port      = easy_handle->conn_handle_back_ptr->client_port;
-    udp_msg_header.vip   = easy_handle->multi_handle_back_ptr->remote_sock_addr->sin_addr.s_addr;
-    udp_msg_header.vport = easy_handle->multi_handle_back_ptr->remote_sock_addr->sin_port;
+    if (easy_handle->multi_handle_back_ptr->remote_sock_addr_v6 != NULL) {
+        uint8_t *vip = easy_handle->multi_handle_back_ptr->remote_sock_addr_v6->sin6_addr.s6_addr;
+        snprintf(udp_msg_header.vip , sizeof(udp_msg_header.vip), "%x%x%x%x%x%x%x%x", vip[0], vip[1], vip[2], \
+            vip[3], vip[4], vip[5], vip[6], vip[7]);
+        udp_msg_header.vport = easy_handle->multi_handle_back_ptr->remote_sock_addr_v6->sin6_port;
+    } else {
+        snprintf(udp_msg_header.vip , sizeof(udp_msg_header.vip), "%x", easy_handle->multi_handle_back_ptr->remote_sock_addr->sin_addr.s_addr);
+        udp_msg_header.vport = easy_handle->multi_handle_back_ptr->remote_sock_addr->sin_port;
+    }
 
     //copy the data from the header  to the base struct of the buffer
     memcpy(buffer.base, &udp_msg_header, sizeof(udp_message_header_t));
@@ -816,18 +902,31 @@ static bool udp_configure_conn(udp_connection_t* conn_handle, udp_easy_handle_t*
                 return false;
             }
 
-            // If the remore address has not been inited yet, then do so
-            if(easy_handle->multi_handle_back_ptr->remote_sock_addr == NULL) {
-                te_malloc(easy_handle->multi_handle_back_ptr->remote_sock_addr,
-                    sizeof(struct sockaddr_in), TE_MTYPE_SOCK_ADDR);
-                uv_ip4_addr(easy_handle->multi_handle_back_ptr->str_ip, \
-                    easy_handle->multi_handle_back_ptr->port, \
-                    easy_handle->multi_handle_back_ptr->remote_sock_addr);
+            char *pos = strchr(easy_handle->multi_handle_back_ptr->str_ip, ':');
+            if (pos) {
+                if(easy_handle->multi_handle_back_ptr->remote_sock_addr_v6 == NULL) {
+                    te_malloc(easy_handle->multi_handle_back_ptr->remote_sock_addr_v6,
+                        sizeof(struct sockaddr_in6), TE_MTYPE_SOCK_ADDR);
+                    uv_ip6_addr(easy_handle->multi_handle_back_ptr->str_ip, \
+                        easy_handle->multi_handle_back_ptr->port, \
+                        easy_handle->multi_handle_back_ptr->remote_sock_addr_v6);
+                }
+
+                assert_code = uv_udp_connect(&(conn_handle->stream),
+                    (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr_v6);
+            } else {
+                // If the remore address has not been inited yet, then do so
+                if(easy_handle->multi_handle_back_ptr->remote_sock_addr == NULL) {
+                    te_malloc(easy_handle->multi_handle_back_ptr->remote_sock_addr,
+                        sizeof(struct sockaddr_in), TE_MTYPE_SOCK_ADDR);
+                    uv_ip4_addr(easy_handle->multi_handle_back_ptr->str_ip, \
+                        easy_handle->multi_handle_back_ptr->port, \
+                        easy_handle->multi_handle_back_ptr->remote_sock_addr);
+                }
+
+                assert_code = uv_udp_connect(&(conn_handle->stream),
+                    (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr);
             }
-
-            assert_code = uv_udp_connect(&(conn_handle->stream),
-                (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr);
-
             if(likely(assert_code == 0)) {
                 conn_handle->status = CONN_CONNECTED_AND_BUSY;
 
@@ -863,8 +962,13 @@ static bool udp_configure_conn(udp_connection_t* conn_handle, udp_easy_handle_t*
             // One can hit the case, only if we init-ed the prev time, but was unable to connect
             // May be we hit the port range / some other erroneous case
             // Let us try to connect again
-            assert_code = uv_udp_connect(&(conn_handle->stream),
-                (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr);
+            if (easy_handle->multi_handle_back_ptr->remote_sock_addr_v6 != NULL) {
+                assert_code = uv_udp_connect(&(conn_handle->stream),
+                    (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr_v6);
+            } else {
+                assert_code = uv_udp_connect(&(conn_handle->stream),
+                    (const struct sockaddr *)easy_handle->multi_handle_back_ptr->remote_sock_addr);
+            }
 
             if(likely(assert_code == 0)) {
                 conn_handle->status = CONN_CONNECTED_AND_BUSY;
@@ -1033,8 +1137,14 @@ void udp_socket_close_cb(uv_handle_t* udp_conn) {
     if(multi_handle->opened_udp_uv_handles == 0) {
         te_free(multi_handle->conn_handle, TE_MTYPE_UDP_CLIENT_CONN_HANDLE);
         multi_handle->conn_handle = NULL;
-        te_free(multi_handle->remote_sock_addr, TE_MTYPE_SOCK_ADDR);
-        multi_handle->remote_sock_addr = NULL;
+        if (multi_handle->remote_sock_addr_v6 != NULL) {
+            te_free(multi_handle->remote_sock_addr_v6, TE_MTYPE_SOCK_ADDR);
+            multi_handle->remote_sock_addr_v6 = NULL;
+        }
+       if (multi_handle->remote_sock_addr != NULL) {
+            te_free(multi_handle->remote_sock_addr, TE_MTYPE_SOCK_ADDR);
+            multi_handle->remote_sock_addr = NULL;
+        }
         te_free(multi_handle, TE_MTYPE_UDP_CLIENT_MULTI_HANDLE);
         multi_handle = NULL;
     }
