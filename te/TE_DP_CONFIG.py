@@ -118,13 +118,12 @@ class TE_DP_CONFIG:
             te_r_queue.empty()
         del self.__host_ip
         del self.__STATES
-        del self.__host_ip
         del self.__cpu
         del self.__queues
         del self.__cpu_to_queue_mapping
         del self.__cpu_to_tedp_mapping
         del self.__task_mapping
-        self.lgr.debug("Deleted all object references in host_ip=%s" %self.__host_ip)
+        #self.lgr.debug("Deleted all object references in host_ip=%s" %self.__host_ip)
 
     def getStates(self):
         return {'host_ip': self.__host_ip, 'cpu': self.__cpu, '__cpu_to_tedp_mapping' : self.__cpu_to_tedp_mapping}

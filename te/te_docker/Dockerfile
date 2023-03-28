@@ -82,7 +82,7 @@ RUN crontab /etc/cron.d/cron_logrotate_te_logs
 
 COPY te_docker/requirements.txt /tmp/
 RUN apt install libpq-dev -y
-RUN pip3 install --upgrade "pip < 23.0"
+RUN pip3 install --upgrade "pip < 24.0"
 RUN pip3 install --requirement /tmp/requirements.txt
 
 COPY te_docker/setup_postgres.sh /tmp/

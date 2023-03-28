@@ -733,12 +733,6 @@ int validate_ipv6_address(char ip_str[]) {
     char temp_ip[100];
     strncpy(temp_ip, ip_str, strlen(ip_str)+1);
 
-    /**
-    // Check that the IPv6 address starts and ends with square brackets
-    if (ip_str[0] != '[' || ip_str[strlen(ip_str)-1] != ']') {
-        return 1;
-    }
-    */
     // Count the number of colons in the string
     num_colons = 0;
     for (i = 0; i < strlen(ip_str); i++) {
@@ -799,8 +793,11 @@ int validate_ipv4_address(char ip_str[]) {
     return 0;
 }
 
-
-/** Scanning vIP:port */
+/**
+* We accept IPv6 format same as TCP in enclosed brackets [IPv6]:Port.
+* However we trim the [] for UDP vip for IPv6.
+* This is done to keep similarity in vip specification for both TCP and UDP.
+* Scanning vIP:port */
 void fetch_ip_port(const char ip_port_str[], char *ip, char *port) {
 
     int i, j, k;
