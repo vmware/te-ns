@@ -291,8 +291,7 @@ json_object* te_get_server_vip_metrics(vector<int> q_id_vector) {
     }
 }
 
-void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array<string, 5> map_keys,
-        vector<json_object*>& metrics_obj_to_clear)
+void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array<string, 5> map_keys)
 {
     const char* res_hash_c = ((map_keys)[0]).c_str();
     const char* ses_hash_c = ((map_keys)[1]).c_str();
@@ -310,7 +309,6 @@ void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array
                         json_object_object_foreach(metric, key, val) {
                             json_object_object_add(uri_level, key, val);
                         }
-                        metrics_obj_to_clear.push_back(metric);
                     }
                     else {
                         json_object_object_add(method_level, uri_c, metric);
@@ -353,7 +351,7 @@ void add_uri_metric_at_level(json_object* url_metric, json_object* metric, array
     }
 }
 
-array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_object*>& metrics_obj_to_clear)
+array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector)
 {
     te_http_url_metrics_msg_t http_url_metric_msg;
     te_udp_url_metrics_msg_t  udp_url_metric_msg;
@@ -538,7 +536,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_o
             key_c = (j->first).c_str();
             json_object_object_add(metrics, key_c, json_object_new_double(j->second));
         }
-        add_uri_metric_at_level(url_metric, metrics, i->first, metrics_obj_to_clear);
+        add_uri_metric_at_level(url_metric, metrics, i->first);
     }
 
     //Latency Stats -- Dumping the mean and variance of latency
@@ -558,7 +556,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_o
             metrics = json_object_new_object();
             json_object_object_add(metrics, "mean_latency", json_object_new_double(net_mean));
             json_object_object_add(metrics, "var_latency", json_object_new_double(net_var));
-            add_uri_metric_at_level(url_metric, metrics, i->first, metrics_obj_to_clear);
+            add_uri_metric_at_level(url_metric, metrics, i->first);
             //json_object_put(metrics);
         }
     }
@@ -573,7 +571,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_o
             json_object_object_add(metric, "total_time", json_object_new_double(j->second.second));
             json_object_array_add(metrics, metric);
         }
-        add_uri_metric_at_level(url_bucket_metric, metrics, i->first, metrics_obj_to_clear);
+        add_uri_metric_at_level(url_bucket_metric, metrics, i->first);
         got_bucket_metrics = true;
     }
 
@@ -590,7 +588,7 @@ array<json_object*, 3> te_get_url_metrics(vector<int> q_id_vector, vector<json_o
             key_c = (j->first).c_str();
             json_object_object_add(metrics, key_c, metric);
         }
-        add_uri_metric_at_level(error_metrics, metrics, i->first, metrics_obj_to_clear);
+        add_uri_metric_at_level(error_metrics, metrics, i->first);
         got_error_metrics = true;
     }
 
@@ -931,8 +929,7 @@ void stat_collector_thread(const char* tcp_socket_to_connect, vector<int> &activ
     }
 
     //URL METRICS
-    vector<json_object*> metrics_obj_to_clear;
-    array<json_object*, 3> url_metrics = te_get_url_metrics(q_id_vector, metrics_obj_to_clear);
+    array<json_object*, 3> url_metrics = te_get_url_metrics(q_id_vector);
     if(url_metrics[0]) {
         json_object_object_add(metrics, "url_metrics", url_metrics[0]);
         got_stats = true;
@@ -991,8 +988,6 @@ void stat_collector_thread(const char* tcp_socket_to_connect, vector<int> &activ
 
 cleanup:
     json_object_put(metrics);
-    for (auto it=metrics_obj_to_clear.begin(); it!=metrics_obj_to_clear.end(); it++)
-        json_object_put(*it);
 
     if(!newly_spawned_tedp.empty())
         print("newly_spawned_tedp", newly_spawned_tedp);
