@@ -31,7 +31,7 @@
 
 
 # Stage 1 (Build tedp binaries)
-FROM ubuntu:16.04 as build_stage
+FROM ubuntu:22.04 as build_stage
 ENV WORKDR=/opt/te/
 ENV TZ=UTC
 ARG usr_lib_path=/usr/local/lib
@@ -44,29 +44,31 @@ RUN apt update && \
     apt install -y cmake && \
     apt install -y libboost-dev
 
-# library install to make te_dp and te_stats_collector
-COPY te/tedp_docker/setup.sh /tmp/
-RUN chmod 755 /tmp/setup.sh
-RUN /bin/bash -e /tmp/setup.sh
-
-# uninstall libssl1.0 if any
-RUN apt remove --purge -y libssl-dev libssl-doc libssl1.0.0 openssl
+# Deprecating usage of setup.sh - using ubuntu-22.04 lib-dev modules
+RUN sed -i '/deb-src/s/^# //' /etc/apt/sources.list && apt update
+RUN apt install automake libtool m4 -y
+RUN apt install libjson-c-dev -y
+RUN apt build-dep curl -y
+RUN apt install wget -y
+RUN apt install build-essential nghttp2 libnghttp2-dev -y
+RUN apt install -y curl && apt install -y libcurl4-openssl-dev
+RUN apt install -y openssl && apt install -y libssl-dev
+RUN apt install -y libuv1-dev
+RUN apt install -y libzmq3-dev
+RUN apt -y install libcrypto++-dev
 
 RUN mkdir -pv $WORKDR/bin && mkdir $WORKDR/obj
 ADD te_dp/Makefile $WORKDR
 ADD te_dp/src $WORKDR/src
 RUN cd $WORKDR && make all
 
-# bundle all necessary dep libraries
-RUN tar -czf $WORKDR/usr_lib_deps.tar.gz \
-    ${usr_lib_path}/libcurl.so* \
-    ${usr_lib_path}/libuv.so.1* \
-    ${usr_lib_path}/libssl.so.1* \
-    ${usr_lib_path}/libzmq.so* \
-    ${usr_lib_path}/libcrypto.so.1*
 
 RUN tar -czf $WORKDR/usr_lib64_deps.tar.gz \
     ${usr_lib64_path}/*
 
 RUN tar -czf $WORKDR/lib64_deps.tar.gz \
-    ${lib64_path}/libjson-c.so.2*
+    ${lib64_path}/libjson-c.so.5* \
+    ${lib64_path}/libuv.so.1* \
+    ${lib64_path}/libssl.so.3* \
+    ${lib64_path}/libzmq.so* \
+    ${lib64_path}/libcrypto.so.3*

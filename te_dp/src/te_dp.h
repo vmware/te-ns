@@ -32,6 +32,11 @@
 #ifndef TE_DP_H
 #define TE_DP_H
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -141,19 +146,19 @@ typedef unsigned short TE_SESSION_CYCLE_TYPE;
 #define TE_SESSION_CYCLE_RESTART   0x0002
 
 //Inputs to te_dp
-char res_cfg_path[TEDP_MAX_STR_LEN];
-char session_cfg_path[TEDP_MAX_STR_LEN];
-char res_hash[TEDP_MAX_STR_LEN];
-char ses_hash[TEDP_MAX_STR_LEN];
-char tedp_mgmt_ip_str[TEDP_MAX_STR_LEN];
-unsigned int tedp_mgmt_ip;
-short pid;
-int stats_timer;
-bool metrics_enabled;
-bool memory_metrics_enabled;
+extern char res_cfg_path[TEDP_MAX_STR_LEN];
+extern char session_cfg_path[TEDP_MAX_STR_LEN];
+extern char res_hash[TEDP_MAX_STR_LEN];
+extern char ses_hash[TEDP_MAX_STR_LEN];
+extern char tedp_mgmt_ip_str[TEDP_MAX_STR_LEN];
+extern unsigned int tedp_mgmt_ip;
+extern short pid;
+extern int stats_timer;
+extern bool metrics_enabled;
+extern bool memory_metrics_enabled;
 
 //Definitions regarding Metrics
-uv_timer_t dump_metrics_timer;
+extern uv_timer_t dump_metrics_timer;
 
 /////////////// ERROR METRICS ///////////////
 
@@ -569,7 +574,7 @@ typedef struct te_url_random_map_s {
     short *te_url_random_array;
 } te_url_random_map_t;
 
-te_url_random_map_t *te_url_random_map;
+extern te_url_random_map_t *te_url_random_map;
 
 typedef struct te_uri_s {
     bool    has_uri;
@@ -794,10 +799,10 @@ typedef struct te_resource_config_s {
 
 } te_resource_config_t;
 
-te_update_context_t   *te_update_context;
-te_resource_config_t  *res_cfg_updated;
-te_session_config_t   *te_session_cfgs_updated;
-te_log_files_t        *te_log_files;
+extern te_update_context_t   *te_update_context;
+extern te_resource_config_t  *res_cfg_updated;
+extern te_session_config_t   *te_session_cfgs_updated;
+extern te_log_files_t        *te_log_files;
 
 // process all connections in session.
 void create_te_sessions(te_session_config_t *session_cfg);
@@ -823,5 +828,6 @@ void session_ramp_timer_cb(uv_timer_t*);
 //UDP Callbacks
 void te_udp_datagram_alloc_buffer(uv_handle_t*, size_t, uv_buf_t*);
 void te_udp_on_read(uv_udp_t*, ssize_t, const uv_buf_t*, const struct sockaddr*, unsigned);
+int setns(int __fd, int __nstype);
 
 #endif

@@ -33,6 +33,27 @@
 #include "te_dp.h"
 #endif
 
+//Inputs to te_dp
+char res_cfg_path[TEDP_MAX_STR_LEN];
+char session_cfg_path[TEDP_MAX_STR_LEN];
+char res_hash[TEDP_MAX_STR_LEN];
+char ses_hash[TEDP_MAX_STR_LEN];
+char tedp_mgmt_ip_str[TEDP_MAX_STR_LEN];
+unsigned int tedp_mgmt_ip;
+short pid;
+int stats_timer;
+bool metrics_enabled;
+bool memory_metrics_enabled;
+
+//Definitions regarding Metrics
+uv_timer_t dump_metrics_timer;
+
+te_update_context_t   *te_update_context;
+te_resource_config_t  *res_cfg_updated;
+te_session_config_t   *te_session_cfgs_updated;
+te_log_files_t        *te_log_files;
+te_url_random_map_t *te_url_random_map;
+
 extern uv_loop_t *loop;
 extern te_socket_hashTbl_t te_socket_hashTbl;
 extern te_resource_config_t* res_cfg;

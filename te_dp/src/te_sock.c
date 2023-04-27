@@ -213,6 +213,34 @@ te_socket_node_t* te_search_udp_socket_hash(unsigned int hash, unsigned int clie
     return NULL;
 }
 
+te_socket_node_t* te_create_or_retrieve_udp_server_socket_v6(struct sockaddr_in6 remote_sock_addr_v6, \
+    unsigned int client_ip, unsigned short client_port, unsigned long unique_stream_id, \
+    udp_server_easy_handle_t *udp_server_easy_handle) {
+    // Calculating Hash taken by
+    // XORing that value with the unique stream id
+    unsigned int hash = ( ((((client_ip & 0x0f000000) >> 9) + fswap(client_port) + \
+        fswap(udp_server_easy_handle->d_port) ) & 524287) ^ unique_stream_id) % te_socket_hashTbl.size;
+
+    te_socket_node_t *socket_node = te_search_udp_socket_hash(hash, client_ip, client_port, \
+        unique_stream_id, udp_server_easy_handle);
+    if(socket_node) {
+        return socket_node;
+    }
+
+    te_malloc(socket_node, sizeof(te_socket_node_t), TE_MTYPE_SOCKET_NODE);
+    if(likely(socket_node)) {
+        memset(socket_node, 0, sizeof(te_socket_node_t));
+        socket_node->client_ip = client_ip;
+        socket_node->client_port = client_port;
+        socket_node->state.unique_stream_id = unique_stream_id;
+        socket_node->remote_sock_addr_v6 = remote_sock_addr_v6;
+        socket_node->udp_server_easy_handle_back_ptr = udp_server_easy_handle;
+        socket_node->next = NULL;
+        te_insert_into_socket_hashTbl(socket_node, hash);
+    }
+    return socket_node;
+}
+
 te_socket_node_t* te_create_or_retrieve_udp_server_socket(struct sockaddr_in remote_sock_addr, \
     unsigned int client_ip, unsigned short client_port, unsigned long unique_stream_id, \
     udp_server_easy_handle_t *udp_server_easy_handle) {

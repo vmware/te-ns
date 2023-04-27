@@ -38,6 +38,8 @@
 #include "te_metrics.h"
 #endif
 
+unsigned int malloc_metric[MEMORY_TYPE_SIZE];
+unsigned int free_metric[MEMORY_TYPE_SIZE];
 extern int IPC_QUEUE_ID;
 extern tedp_profile_t tedp_profile;
 extern tedp_mode_t tedp_mode;

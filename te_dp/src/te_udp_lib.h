@@ -159,7 +159,8 @@ typedef struct __attribute__ ((__packed__)) udp_message_header_s {
     unsigned int   response_size_dg;   //Size of each dg in response
     unsigned short response_num_dg;    //Number of dg to respond
     unsigned long  timeout;            //Timeout to stop listening
-    unsigned int   vip, client_ip;     //vip can be different from the target server ip
+    char           vip[40];            //vip can be different from the target server ip
+    unsigned int   client_ip;
     unsigned short vport, client_port; // similarly vport can be different from server port
 
     // vip and vport are added in order to collect metric at the back end server w.r.t to the vip
@@ -171,14 +172,16 @@ typedef struct udp_server_easy_handle_s {
     unsigned short      d_port;
     //UDP's listening address
     struct sockaddr_in  recv_addr;
+    struct sockaddr_in6  recv_addr_v6;
     //uv_udp's listening handle
     uv_udp_t            uv_udp_handle;
+    uv_udp_t            uv_udp6_handle;
     //User pointer to be passed along with the callbacks
     void*               usr_ptr;
     //User callback function pointer for send callback
-    void (*user_send_callback_fptr)(unsigned long, unsigned short, udp_send_metrics_t, void*);
+    void (*user_send_callback_fptr)(char *, unsigned short, udp_send_metrics_t, void*);
     //User callback function pointer for recv callback
-    void (*user_recv_callback_fptr)(unsigned long, unsigned short, udp_recv_metrics_t, void*);
+    void (*user_recv_callback_fptr)(char *, unsigned short, udp_recv_metrics_t, void*);
 } udp_server_easy_handle_t;
 
 // We have a global timer which will kick in when there is at least one listener
@@ -270,6 +273,7 @@ typedef struct udp_multi_handle_s {
     unsigned short   port;
     //Combination of str_ip:port of remote address
     struct sockaddr_in *remote_sock_addr;
+    struct sockaddr_in6 *remote_sock_addr_v6;
 
     //User callback function pointer for send callback
     void (*user_send_callback_fptr)(udp_send_metrics_t, void*);

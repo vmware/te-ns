@@ -30,7 +30,7 @@
 #**********************************************************************************************
 
 # Stage 2 (Build final image)
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 ENV WORKDR=/opt/te/
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
@@ -53,7 +53,7 @@ RUN apt update && \
 
 # python related requirements
 COPY te/tedp_docker/requirements.txt /tmp/
-RUN pip3 install --upgrade "pip < 21.0"
+RUN pip3 install --upgrade "pip < 24.0"
 RUN pip3 install --requirement /tmp/requirements.txt
 
 COPY te/open_source_licenses.tar.bz2 /
@@ -112,10 +112,8 @@ ADD te/TE_UTILS.py \
 RUN mkdir -pv $WORKDR/bin
 COPY --from=tedp_bin:v2.0 $WORKDR/bin $WORKDR/bin
 COPY --from=tedp_bin:v2.0 $WORKDR/usr_lib64_deps.tar.gz ${usr_lib64_path}/usr_lib64_deps.tar.gz
-COPY --from=tedp_bin:v2.0 $WORKDR/usr_lib_deps.tar.gz ${usr_lib_path}/usr_lib_deps.tar.gz
 COPY --from=tedp_bin:v2.0 $WORKDR/lib64_deps.tar.gz ${lib64_path}/lib64_deps.tar.gz
-RUN tar -xvf ${usr_lib_path}/usr_lib_deps.tar.gz -C / && rm ${usr_lib_path}/usr_lib_deps.tar.gz && \
-    tar -xvf ${usr_lib64_path}/usr_lib64_deps.tar.gz -C / && rm ${usr_lib64_path}/usr_lib64_deps.tar.gz && \
+RUN tar -xvf ${usr_lib64_path}/usr_lib64_deps.tar.gz -C / && rm ${usr_lib64_path}/usr_lib64_deps.tar.gz && \
     tar -xvf ${lib64_path}/lib64_deps.tar.gz -C / && rm ${lib64_path}/lib64_deps.tar.gz && \
     ldconfig -v
 

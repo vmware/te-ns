@@ -45,6 +45,8 @@
 #include "te_metrics.h"
 #endif
 
+#define TRUE true
+#define FALSE false
 //For parsing interface, get and post profiles
 typedef struct te_bst_node_s
 {
@@ -53,7 +55,7 @@ typedef struct te_bst_node_s
     struct te_bst_node_s *left, *right;
 } te_bst_node_t;
 
-uv_loop_t *loop;
+extern uv_loop_t *loop;
 
 void init_te_dp(bool is_update);
 void update_te_dp();
@@ -75,5 +77,8 @@ void te_push_session_config_fsm(TE_SESSION_CONFIG_STATE state);
 
 void session_config_uv_async(uv_async_t *req);
 void te_tedp_poll_uv_cb(uv_poll_t *req, int status, int events);
+
+extern int validate_ipv6_address(char ip_str[]);
+extern int validate_ipv4_address(char ip_str[]);
 
 #endif
