@@ -92,6 +92,8 @@ RUN /tmp/setup_postgres.sh
 COPY open_source_licenses.tar.bz2 /
 
 COPY te_docker/te.conf /etc/nginx/sites-available/default
+COPY te_docker/ngx_http_upload_module.so /usr/share/nginx/modules
+COPY te_docker/nginx.conf /etc/nginx/
 COPY te_docker/postgres_grafana_config.yaml /etc/grafana/provisioning/datasources/
 COPY te_docker/grafana_dashboard_config.yaml /etc/grafana/provisioning/dashboards/
 COPY te_docker/udp_client_metrics_dashboard.json /var/lib/grafana/dashboards/
@@ -105,6 +107,7 @@ ADD TE.py \
     GET_AND_RUN_DOCKER_IMAGE.py \
     te_json_schema.py \
     TE_METRICS.py \
+    upload_flask.py \
     $WORKDR
 
 RUN mkdir $WORKDR/static
@@ -127,7 +130,9 @@ ENTRYPOINT sed -i "s/5001/$NGINX_PORT/g" /etc/nginx/sites-available/default && \
     sed -i "s/url: localhost:[0-9]*/url: localhost:$POSTGRES_PORT/g" /etc/grafana/provisioning/datasources/postgres_grafana_config.yaml && \
     echo "[supervisord]" >> /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \
+    echo "[program:TE_FILE_UPLOAD]" >> /etc/supervisord.conf && \
+    echo "command=python3 $WORKDR/upload_flask.py" >> /etc/supervisord.conf && \
     echo "[program:TE]" >> /etc/supervisord.conf && \
     echo "command=python3 $WORKDR/TE.py -m $IPADRESS -fp $FLASK_PORT -rp $REDIS_PORT -np $NGINX_PORT \
     -pp $POSTGRES_PORT -zp $ZMQ_PORT -gp $GRAFANA_PORT -ct $STAT_COLLECT_INTERVAL -dt $STAT_DUMP_INTERVAL \
-    -lp $LOGPATH -ll $LOGLEVEL" >> /etc/supervisord.conf && /usr/bin/supervisord
+    -lp $LOGPATH -ll $LOGLEVEL" >> /etc/supervisord.conf && /usr/bin/supervisord 

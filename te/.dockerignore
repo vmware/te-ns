@@ -11,6 +11,8 @@
 !te_docker/requirements.txt
 !te_docker/setup_postgres.sh
 !te_docker/te.conf
+!te_docker/nginx.conf
+!te_docker/ngx_http_upload_module.so
 !TE_METRICS.py
 !te_docker/postgres_grafana_config.yaml
 !te_docker/udp_client_metrics_dashboard.json
@@ -18,3 +20,4 @@
 !te_docker/tcp_client_metrics_dashboard.json
 !te_swagger.json
 !open_source_licenses.tar.bz2
+!upload_flask.py

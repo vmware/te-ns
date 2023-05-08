@@ -49,7 +49,8 @@ RUN apt update && \
     apt install -y logrotate && \
     apt install -y libffi-dev && \
     apt install -y cron && \
-    apt install -y supervisor
+    apt install -y supervisor && \
+    apt install -y wget 
 
 # python related requirements
 COPY te/tedp_docker/requirements.txt /tmp/
