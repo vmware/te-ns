@@ -31,7 +31,7 @@
 
 greenlet==2.0.2
 redis==4.5.4
-requests==2.25.1
+requests==2.31.0
 rq==1.11.1
 sysv-ipc==1.0.0
 urllib3==1.26.5
