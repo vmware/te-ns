@@ -58,7 +58,7 @@ try:
     from flask_inputs.validators import JsonSchema
     from pssh.clients import ParallelSSHClient
     from pssh.config import HostConfig
-    from pssh.exceptions import ConnectionErrorException, SSHException, AuthenticationException, UnknownHostException
+    from pssh.exceptions import ConnectionErrorException, SSHException, AuthenticationException, UnknownHostException, HostArgumentError, Timeout
     from rq import Queue as rqQueue
     from redis import Redis
     from gevent import joinall
@@ -410,39 +410,45 @@ class FlaskApplicationWrapper:
             stdOut = {}
             problematicHost = {}
             exceptionHostTohandle = []
-            for runDetails in output:
-                exitCodeHost = runDetails.exit_code
-                exceptionHost = runDetails.exception
-                host = runDetails.host
-                if(isinstance(exceptionHost, SSHException)):
-                    self.lgr.debug("Got Exception %s in host %s" %(str(runDetails.exception), host))
-                    exceptionHostTohandle.append(host)
-                elif(isinstance(exceptionHost, ConnectionErrorException)):
-                    problematicHost[host] = "Connection refused/timed out"
-                elif(isinstance(exceptionHost, AuthenticationException)):
-                    problematicHost[host] = "Authentication error (user/password/ssh key error)"
-                elif(isinstance(exceptionHost, UnknownHostException)):
-                    problematicHost[host] = "Host is unknown (dns failure)"
-                elif(exitCodeHost is not None and validate_exit_codes and exitCodeHost != cleanExitCode):
-                    problematicHost[host] = possibleExitCodesDict.get(exitCodeHost, "Exit Code: %d" %exitCodeHost)
 
-                #If stdout is needed
-                if getStdOut:
-                    gotOut = runDetails.channel.read(1024)
-                    if gotOut is None:
-                        self.lgr.error("Unable to get response from the client host_ip=%s"%host)
-                        if host not in problematicHost:
-                            problematicHost[host] = gotOut
+            for host_output in output:
+                host = host_output.host
+                try:
+                    exitCodeHost = host_output.exit_code
+                    if host_output.exception:
+                        raise host_output.exception
+
+                    stdout = list(host_output.stdout)
+                    stderr = list(host_output.stderr)
+                    self.lgr.debug("stdout :: {}, {}".format(stdout, type(stdout)))
+
+                    if stderr:
+                        problematicHost[host] = ''.join(stderr)
+                    elif(exitCodeHost is not None and validate_exit_codes and exitCodeHost != cleanExitCode):
+                        problematicHost[host] = possibleExitCodesDict.get(exitCodeHost, "Exit Code: %d" %exitCodeHost)
                     else:
-                        stdOut[host] = gotOut
+                        stdOut[host] = ''.join(stdout)
+                except (SSHException) as e:
+                        print("Got Exception %s in host %s" %(str(e), host))
+                        exceptionHostTohandle.append(host)
+                except (AuthenticationException) as e:
+                    problematicHost[host] = "Authentication error (user/password/ssh key error)"
+                except (ConnectionErrorException, Timeout) as e:
+                    problematicHost[host] = "Connection refused/timed out"
+                except (HostArgumentError,  UnknownHostException) as e:
+                    problematicHost[host] = "Host is unknown (dns failure)"
+                except Exception as e:
+                    self.lgr.debug("An unexpected error occurred on {host}: {}".format(str(e)))
+                    exceptionHostTohandle.append(host)
             return stdOut, exceptionHostTohandle, problematicHost
 
         #Run the command for the first time
         output = []
         output = __run_command(client, cmd=cmd, host_args=host_args)
-        out, exceptionHostTohandle, problematicHost = __validateOutput(output)
+        output, exceptionHostTohandle, problematicHost = __validateOutput(output)
         self.lgr.debug("OUTPUT :: {}, {}".format(output, type(output)))
-        output.append(out)
+        self.lgr.debug("exceptionHostTohandle :: {}, {}".format(exceptionHostTohandle, type(exceptionHostTohandle)))
+        self.lgr.debug("problematicHost :: {}, {}".format(problematicHost, type(problematicHost)))
         if exceptionHostTohandle == []:
             return ((output, problematicHost) if getStdOut else problematicHost)
 
@@ -474,8 +480,7 @@ class FlaskApplicationWrapper:
             #Create New retry client and repeat the process
             retryClient = ParallelSSHClient(list(retryHostConfig.keys()), host_config=tedp_host_config, timeout = 240)
             output = __run_command(retryClient, cmd=cmd, host_args=retryHostArgs)
-            out, exceptionHostTohandle, retryProblematicHost = __validateOutput(output)
-            output.update(out)
+            output, exceptionHostTohandle, retryProblematicHost = __validateOutput(output)
             problematicHost.update(retryProblematicHost)
             del retryClient
 
