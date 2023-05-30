@@ -30,6 +30,7 @@
 #**********************************************************************************************
 
 from rq import Queue as rqQueue
+from rq.results import Result as rqResult
 import time
 import traceback
 from collections import defaultdict
@@ -481,9 +482,8 @@ class TE_DP_CONFIG:
                     }
                 else:
                     successDict["Failure"].append(error)
-
-            return successDict
             self.lgr.debug("update_te_dp_helper for %s's result %s" %(self.__host_ip, str(successDict)) )
+            return successDict
 
         except:
             self.lgr.error("Error in update_te_dp_helper %s" %traceback.format_exc())
@@ -589,17 +589,24 @@ class TE_DP_CONFIG:
                 #Task Completed
                 status = task_obj.get_status()
                 if status == "finished":
-                    result = task_obj.result
-                    status, result_after_evaluation = self.__resultEvaluator[typeOfTask](result)
-                    if status: #Task Success
-                        taskResult["Success"] = result_after_evaluation
-                        self.lgr.debug("Success in host_ip=%s is %s" %(self.__host_ip, \
-                            str(result_after_evaluation)))
-                    else: #Task Failed
-                        taskResult["Failure"] = result_after_evaluation
+                    result = task_obj.latest_result()
+                    if result.type == rqResult.Type.SUCCESSFUL: #for SUCCESSFUL:
+                        status, result_after_evaluation = self.__resultEvaluator[typeOfTask](result.return_value)
+                        self.lgr.debug("get_mgmt_task_status_and_result in host_ip {}, result {}".format(self.__host_ip, result.return_value))
+                        if status: #Task Success
+                            taskResult["Success"] = result_after_evaluation
+                            self.lgr.debug("Success in host_ip=%s is %s" %(self.__host_ip, \
+                                str(result_after_evaluation)))
+                        else: #Task Failed
+                            taskResult["Failure"] = result_after_evaluation
+                            taskResult["status"] = False
+                            self.lgr.debug("Failure in host_ip={} is {}, return value {}".format(self.__host_ip, \
+                                result_after_evaluation, result.return_value))
+                    elif result == rqResult.Type.FAILED: #for FAILED
+                        taskResult["RQ-Failure"] += 1
                         taskResult["status"] = False
-                        self.lgr.debug("Failure in host_ip=%s is %s" %(self.__host_ip, \
-                            str(result)))
+                        self.lgr.debug("RQ-result-Failure in host_ip={} and result={}".format(
+                            self.__host_ip, result.exc_string))
                     self.__task_mapping[typeOfTask].pop(cpu)
 
                 #Task Failed due to RQ Error
@@ -607,7 +614,7 @@ class TE_DP_CONFIG:
                     taskResult["RQ-Failure"] += 1
                     taskResult["status"] = False
                     self.lgr.debug("RQ-Failure in host_ip={} and result={}".format(
-                        self.__host_ip, task_obj.result))
+                        self.__host_ip, task_obj.exc_info()))
                     self.__task_mapping[typeOfTask].pop(cpu)
 
                 #If the tasks has been completed in all CPUs
@@ -668,15 +675,23 @@ class TE_DP_CONFIG:
                     #Task Completed
                     status = task_obj.get_status()
                     if status == "finished":
-                        result = task_obj.result
-                        status, task_profile_tag = self.__resultEvaluator[typeOfTask](result, cpu)
-                        if status: #Task Success
-                            taskResult["Success"][task_profile_tag] += 1
-                            self.lgr.debug("Success for task_profile_tag=%s in host_ip=%s" %(task_profile_tag, self.__host_ip))
-                        else: #Task Failed
-                            taskResult["Failure"][task_profile_tag].append(result)
+                        result = task_obj.latest_result()
+                        if result.type == rqResult.Type.SUCCESSFUL: #for SUCCESSFUL
+                            self.lgr.debug("get_task_status_and_result: host_ip {}, status {} result {}".format(self.__host_ip, status, result.return_value))
+                            status, task_profile_tag = self.__resultEvaluator[typeOfTask](result.return_value, cpu)
+                            if status: #Task Success
+                                taskResult["Success"][task_profile_tag] += 1
+                                self.lgr.debug("Success for task_profile_tag=%s in host_ip=%s" %(task_profile_tag, self.__host_ip))
+                            else: #Task Failed
+                                taskResult["Failure"][task_profile_tag].append(result)
+                                taskResult["status"] = False
+                                self.lgr.debug("Failure for task_profile_tag={} in host_ip={} and result={}".format(task_profile_tag, self.__host_ip, result.return_value))
+                        elif result.type == rqResult.Type.FAILED: #for FAILED
+                            status, task_profile_tag = self.__resultEvaluator[typeOfTask](None, cpu)
+                            taskResult["RQ-Failure"][task_profile_tag] += 1
                             taskResult["status"] = False
-                            self.lgr.debug("Failure for task_profile_tag=%s in host_ip=%s and result=%s" %(task_profile_tag, self.__host_ip, str(result)))
+                            self.lgr.debug("RQ-result-Failure in host_ip={} task_profile_tag={} result={}".format(
+                                self.__host_ip, task_profile_tag, result.exc_string))
                         self.__task_mapping[typeOfTask].pop(cpu)
 
                     #Task Failed due to RQ Error
@@ -685,7 +700,7 @@ class TE_DP_CONFIG:
                         taskResult["RQ-Failure"][task_profile_tag] += 1
                         taskResult["status"] = False
                         self.lgr.debug("RQ-Failure in host_ip={} task_profile_tag={} and result={}".format(
-                            self.__host_ip, task_profile_tag, task_obj.result))
+                            self.__host_ip, task_profile_tag, task_obj.exc_info()))
 
                     #If the tasks has been completed in all CPUs
                     if(not(bool(self.__task_mapping[typeOfTask].keys()))):
