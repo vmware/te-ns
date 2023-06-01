@@ -117,6 +117,7 @@ RUN tar -xvf ${usr_lib64_path}/usr_lib64_deps.tar.gz -C / && rm ${usr_lib64_path
     tar -xvf ${lib64_path}/lib64_deps.tar.gz -C / && rm ${lib64_path}/lib64_deps.tar.gz && \
     ldconfig -v
 
+RUN sed -i 's/CipherString = DEFAULT:@SECLEVEL=2/CipherString = DEFAULT:@SECLEVEL=0/g' /etc/ssl/openssl.cnf
 # add rq.service
 RUN echo "[supervisord]" >> /etc/supervisord.conf && \
     echo "nodaemon=true" >> /etc/supervisord.conf && \

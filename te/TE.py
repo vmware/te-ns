@@ -729,7 +729,9 @@ class FlaskApplicationWrapper:
                                 'te_dp_dict' : self.__te_controller_obj.get_te_dp(),
                                 'connect_completed_tedps':list(self.__connect_completed_tedps),
                                 'setup_completed_tedps' : list(self.__setup_completed_tedps),
-                                'all_te_dp_dict_credentials' : self.__all_te_dp_dict_credentials}
+                                'all_te_dp_dict_credentials' : self.__all_te_dp_dict_credentials,
+                                'resource_config' : self.__te_controller_obj.get_resource_config(),
+                                'session_config' : self.__te_controller_obj.get_session_config()}
         statesToReturn = {'te_dp_states': tedp_states, 'te_flask_api_states':te_flask_api_states}
         return self.__success(statesToReturn)
 
