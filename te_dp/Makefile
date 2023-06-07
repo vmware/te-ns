@@ -39,7 +39,7 @@ BINDIR = bin
 DP_SRC   = $(wildcard $(SRCDIR)/*.c)
 DP_OBJ   = $(DP_SRC:$(SRCDIR)/%.c=$(OBJDIR)/%.o)
 DP_BIN   = $(BINDIR)/te_dp
-DP_FLAGS = -lcurl -luv -ljson-c -lssl -lpthread
+DP_FLAGS = -lcurl -luv -ljson-c -lssl -lcrypto -lpthread
 
 STAT_SRC   = $(wildcard $(SRCDIR)/*.cpp)
 STAT_OBJ   = $(STAT_SRC:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
