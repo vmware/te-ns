@@ -747,13 +747,11 @@ class FlaskApplicationWrapper:
             cpu_result = {}
             problematicHost = {}
             for host, linesOfOutput in output.items():
-                for line in linesOfOutput:
-                    try:
-                        cpus = int(line)
-                        cpu_result[host] = cpus
-                    except:
-                        problematicHost[host] = line
-                    break
+                try:
+                    cpus = int(linesOfOutput)
+                    cpu_result[host] = cpus
+                except:
+                    problematicHost[host] = linesOfOutput
             if(bool(problematicHost)):
                 return False, "Got unexpected Response", problematicHost
             return True, "Got CPU Count", cpu_result
